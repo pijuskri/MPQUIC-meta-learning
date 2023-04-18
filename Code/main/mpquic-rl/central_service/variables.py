@@ -1,0 +1,4 @@
+REMOTE_PORT = '2222'
+REMOTE_HOST = "mininet@localhost"
+REMOTE_SERVER_RUNNER_HOSTNAME = ["mininet@localhost"]
+REMOTE_SERVER_RUNNER_PORT = ["2222"]

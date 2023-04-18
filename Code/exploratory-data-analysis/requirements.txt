@@ -2,3 +2,5 @@ numpy
 pandas
 jupyterlab
 directory_tree
+nbconvert
+PyPDF2==2.12.1
