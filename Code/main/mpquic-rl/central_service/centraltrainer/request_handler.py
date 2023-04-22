@@ -6,7 +6,7 @@ import sys
 import json
 
 
-from utils.logger import config_logger
+from central_service.utils.logger import config_logger
 
 class RequestHandler(threading.Thread):
     ''' RequestHandler will receive requests from MPQUIC

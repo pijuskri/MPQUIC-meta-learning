@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import threading
 import multiprocessing as mp
@@ -7,13 +9,16 @@ import json
 import os
 import random
 
+import pexpect
+from pexpect.popen_spawn import PopenSpawn
+
 from .experiences.quic_web_browse import launchTests
 #from utils.logger import config_logger
 
 from central_service.variables import REMOTE_SERVER_RUNNER_HOSTNAME, REMOTE_SERVER_RUNNER_PORT, REMOTE_HOST, REMOTE_PORT
 
 MIDDLEWARE_SOURCE_REMOTE_PATH = "~/go/src/github.com/{username}/middleware"
-MIDDLEWARE_BIN_REMOTE_PATH = "./go/bin/middleware"
+MIDDLEWARE_BIN_REMOTE_PATH = "~/go/bin/middleware"
 
 class Session:
     '''
@@ -25,7 +30,7 @@ class Session:
         self._index = 0
 
         self._topologies, self._len_topo = self.loadTopologies(topologies)
-        self._graphs, self._len_graph  = self.loadDependencyGraphs(dgraphs)
+        self._graphs, self._len_graph = self.loadDependencyGraphs(dgraphs)
 
         self._pairs = self.generatePairs()
 
@@ -149,17 +154,21 @@ class Environment:
         self.bdw_paths = bdw_paths
 
         # Spawn Middleware
-        self._spawn_cmd = self.construct_cmd(mconfig)
+        #self._spawn_cmd = self.construct_cmd(mconfig)
+        self.mconfig = mconfig
         self._remoteHostname = remoteHostname
         self._remotePort = remotePort
         self.spawn_middleware()
 
-    def construct_cmd(self, config):
+    def spawn_cmd(self):
         return "{} -sv {} -cl {} -pub {} -sub {}".format(MIDDLEWARE_BIN_REMOTE_PATH,
-                                                    config['server'], 
-                                                    config['client'], 
-                                                    config['publisher'], 
-                                                    config['subscriber'])
+                                                    self.mconfig['server'],
+                                                    self.mconfig['client'],
+                                                    self.mconfig['publisher'],
+                                                    self.mconfig['subscriber'])
+
+    def ssh(self, command):
+        return f"ssh -p {self._remotePort} {self._remoteHostname} \"{command}\""
 
     def spawn_middleware(self):
         ''' This method might seem more like a restart.
@@ -167,20 +176,27 @@ class Environment:
             Small sleep to ensure previous one is killed.
         '''
         self.stop_middleware()
-        time.sleep(0.5)
-        ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, self._spawn_cmd]
-        subprocess.Popen(ssh_cmd, 
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE, 
+        #time.sleep(0.5)
+        #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, self._spawn_cmd]
+        #ssh_cmd = f"ssh -p {self._remotePort} {self._remoteHostname} {self._spawn_cmd}"
+        cmd = self.spawn_cmd()
+        subprocess.Popen(self.ssh(cmd),
+                        #stdout=subprocess.PIPE,
+                        stdout=sys.stdout,
+                        stderr=subprocess.PIPE,
                         shell=False)
+        #child = PopenSpawn(ssh_cmd, encoding='utf-8', logfile=sys.stdout)
+        print('spawing middleware...')
 
-    def stop_middleware(self):
-        kill_cmd = "killall {}".format(MIDDLEWARE_BIN_REMOTE_PATH)
-        ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, kill_cmd]
-        subprocess.Popen(ssh_cmd,
+    def stop_middleware(self, wait=True):
+        kill_cmd = f"killall {MIDDLEWARE_BIN_REMOTE_PATH}"
+        #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, kill_cmd]
+        sub = subprocess.Popen(self.ssh(kill_cmd),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         shell=False)
+        if wait:
+            sub.wait()
 
     def getNetemToTuple(self, topo):
         '''in json -> tuple (0 0 loss 1.69%) is stored as [0, 0, loss 1.69%]

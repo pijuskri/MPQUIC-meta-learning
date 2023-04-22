@@ -72,7 +72,8 @@ def quicTests(topos=DEFAULT_TOPOLOGY, graph="www.google.com_", protocol="mptcp",
                     CLIENT_PCAP: "yes",
                     SERVER_PCAP: "yes",
                     HTTPS_FILE: "random",
-                    WEB_BROWSE: "1",     # single file transfer: 0  ;  web browse: 1
+                    #WEB_BROWSE: "1",     # single file transfer: 0  ;  web browse: 1
+                    WEB_BROWSE: "1",
                     JSON_FILE: graph,   # specify websites to download
                     PROJECT: "quic-go",     # quic-go is the prioritized stream scheduling project, mp-quic is the original multipath-quic project
                     PATH_SCHEDULER:"MultiPath",   # quic-go param: MultiPath; SinglePath
@@ -111,7 +112,8 @@ def quicTests(topos=DEFAULT_TOPOLOGY, graph="www.google.com_", protocol="mptcp",
     experienceLauncher.finish()
 
 
-def generateExperimentalDesignRandomTopos(nbMptcpTopos=10, pathsPerTopo=2, bandwidth=(0.1, 100), rtt=(0, 50), queuingDelay=(0.0, 0.1), loss=(0.0, 2.5)):
+#def generateExperimentalDesignRandomTopos(nbMptcpTopos=10, pathsPerTopo=2, bandwidth=(0.1, 100), rtt=(0, 50), queuingDelay=(0.0, 0.1), loss=(0.0, 2.5)):
+def generateExperimentalDesignRandomTopos(nbMptcpTopos=10, pathsPerTopo=2, bandwidth=(100, 100), rtt=(0, 1),queuingDelay=(0.0, 0.0), loss=(0.0, 0.0)):
     """ Assume only two paths per MPTCP topology, uniform distribution """
     mptcpTopos = []
     for _ in range(nbMptcpTopos):

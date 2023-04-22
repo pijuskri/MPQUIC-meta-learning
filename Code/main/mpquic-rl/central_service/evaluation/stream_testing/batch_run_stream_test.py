@@ -6,8 +6,7 @@ import os
 
 #from central_service.variables import REMOTE_PORT, REMOTE_HOST
 # local imports
-from experiences.quic_web_browse import launchTests
-
+from experiences.quic_web_browse import launchTests, quicTests
 
 # global vars
 #TOPOS_FP = './../topos.json'
@@ -84,17 +83,19 @@ def main():
     pairs = load_or_generate_pairs(TG_PAIRS[0])
     counter = 1
     with open('output.txt', 'w') as fp:
-        for p in pairs:
+        for p in pairs[:1]:
             graph = p['graph']['file']
             topo = getNetemToTuple([p['topo']])
 
             fp.write("{},\t{},\t{}\n".format(counter, graph, p['topo']))
             counter += 1
 
-            for _ in range(10):
+            for _ in range(1): #10
                 try:
                     start = time.time()
                     launchTests(topo, graph)
+                    #print('test started')
+                    #quicTests()
                     end = time.time()
 
                     diff = int(start - end)
