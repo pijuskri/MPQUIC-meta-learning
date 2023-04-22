@@ -1,4 +1,5 @@
 from mpParamXp import MpParamXp
+import time
 
 class MpExperience:
 	NONE = "none"
@@ -18,11 +19,23 @@ class MpExperience:
 		self.clean()
 
 	def prepare(self):
+
+		now = time.time()
 		self.setupSysctl()
+		print(f"Time to execute setupSysctl(): {int(time.time() - now)}s")
+		now = time.time()
 		self.mpConfig.configureNetwork()
+		print(f"Time to execute mpConfig.configureNetwork(): {int(time.time() - now)}s")
+		now = time.time()
 		self.disableTSO()
+		print(f"Time to execute disableTSO(): {int(time.time() - now)}s")
+		now = time.time()
 		self.runTcpDump()
+		print(f"Time to execute runTcpDump(): {int(time.time() - now)}s")
+		now = time.time()
 		self.runNetemAt()
+		print(f"Time to execute runNetemAt(): {int(time.time() - now)}s")
+		now = time.time()
 		pass
 
 	def disableTSO(self):

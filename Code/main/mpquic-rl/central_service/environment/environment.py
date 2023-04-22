@@ -158,10 +158,11 @@ class Environment:
         self.mconfig = mconfig
         self._remoteHostname = remoteHostname
         self._remotePort = remotePort
+        #self.stop_middleware()
         self.spawn_middleware()
 
     def spawn_cmd(self):
-        return "{} -sv {} -cl {} -pub {} -sub {}".format(MIDDLEWARE_BIN_REMOTE_PATH,
+        return "stdbuf -i0 -o0 -e0 {} -sv {} -cl {} -pub {} -sub {}".format(MIDDLEWARE_BIN_REMOTE_PATH,
                                                     self.mconfig['server'],
                                                     self.mconfig['client'],
                                                     self.mconfig['publisher'],
@@ -180,23 +181,28 @@ class Environment:
         #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, self._spawn_cmd]
         #ssh_cmd = f"ssh -p {self._remotePort} {self._remoteHostname} {self._spawn_cmd}"
         cmd = self.spawn_cmd()
-        subprocess.Popen(self.ssh(cmd),
-                        #stdout=subprocess.PIPE,
-                        stdout=sys.stdout,
-                        stderr=subprocess.PIPE,
-                        shell=False)
-        #child = PopenSpawn(ssh_cmd, encoding='utf-8', logfile=sys.stdout)
-        print('spawing middleware...')
+        #subprocess.Popen(self.ssh(cmd), bufsize=0,
+        #                #stdout=subprocess.PIPE,
+        #                #stdout=subprocess.DEVNULL,
+        #                #stdout=sys.stdout,
+        #                #stderr=subprocess.PIPE,
+        #                #stderr=subprocess.DEVNULL,
+        #                shell=False)
+        child = PopenSpawn(self.ssh(cmd), encoding='utf-8', logfile=sys.stdout)
+        print('spawning middleware...')
 
     def stop_middleware(self, wait=True):
-        kill_cmd = f"killall {MIDDLEWARE_BIN_REMOTE_PATH}"
+        kill_cmd = f"stdbuf -oL killall {MIDDLEWARE_BIN_REMOTE_PATH}"
         #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, kill_cmd]
         sub = subprocess.Popen(self.ssh(kill_cmd),
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
+                        #stdout=subprocess.DEVNULL,
+                        #stderr=subprocess.DEVNULL,
                         shell=False)
-        if wait:
-            sub.wait()
+        #if wait:
+        #    sub.wait()
+        sub.communicate()
 
     def getNetemToTuple(self, topo):
         '''in json -> tuple (0 0 loss 1.69%) is stored as [0, 0, loss 1.69%]

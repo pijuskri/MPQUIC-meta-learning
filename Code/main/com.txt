@@ -19,9 +19,6 @@ steps to run:
 python environment/generate_topos.py
 python environment/split_data_test.py
 
-		
-
-
 
 #add 'C:\Program Files\Oracle\VirtualBox' to path
 #vboxmanage.exe clonehd "kvm-mpquic.vmdk" "kvm-mpquic.vdi" --format vdi

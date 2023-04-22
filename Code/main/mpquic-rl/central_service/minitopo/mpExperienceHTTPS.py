@@ -52,7 +52,7 @@ class  MpExperienceHTTPS(MpExperience):
 				self.random_size2)
 
 	def getHTTPSServerCmd(self):
-		s = "python " + os.path.dirname(os.path.abspath(__file__))  + \
+		s = "python3 " + os.path.dirname(os.path.abspath(__file__))  + \
 				"/https.py &>" + MpExperienceHTTPS.SERVER_LOG + "&"
 		print(s)
 		return s

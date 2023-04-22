@@ -1,0 +1,3 @@
+#make middle output to stdout (cant do it the old way, cause causes pipe deadlock)
+#if stdout is not specified (instead of subprocess.PIPE), middleware causes the mtcp ssh to time out....
+#seems subprocess.PIPE is evil, should be avoided.

@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import sys
+
+import pexpect
+
 from .generate_topo import generateTopoFile, PATHS, DELAY, QUEUE_SIZE, QUEUING_DELAY, BANDWIDTH, LOSS, NETEM
 from .generate_xp import generateXpFile
 import queue
@@ -8,6 +12,8 @@ import os
 import subprocess
 import time
 import threading
+import pexpect
+from pexpect.popen_spawn import PopenSpawn
 
 """ Let 2 hours to complete the experiment """
 # This should be sufficient for the worst case topology (~0.10 Mbps to download 20 MB on single-path)
@@ -70,11 +76,16 @@ class MinitopoCommand(object):
 
         def target():
             try:
-                self.process = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 minitopoOut = open(os.path.join(self.cwd, "minitopo.out"), "wb")
                 minitopoErr = open(os.path.join(self.cwd, "minitopo.err"), "wb")
-                minitopoOut.writelines(self.process.stdout.readlines())
-                minitopoErr.writelines(self.process.stderr.readlines())
+                #self.process = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.process = subprocess.Popen(self.cmd, shell=True, stdout=minitopoOut, stderr=minitopoErr)
+                #print(self.cmd)
+                print('Minitopo launched')
+                #minitopoOut = open(os.path.join(self.cwd, "minitopo.out"), "wb")
+                #minitopoErr = open(os.path.join(self.cwd, "minitopo.err"), "wb")
+                #minitopoOut.writelines(self.process.stdout.readlines())
+                #minitopoErr.writelines(self.process.stderr.readlines())
                 minitopoOut.close()
                 minitopoErr.close()
                 self.process.communicate()
@@ -147,9 +158,25 @@ class ExperienceLauncher(object):
             raise Exception("File " + filename + " could not be pull from remote server at path " + path)
 
     def changeMptcpEnabled(self, num, value):
-        cmd = ["ssh", "-p", self.remotePorts[num], self.remoteHostnames[num], "sudo sysctl net.mptcp.mptcp_enabled=" + str(value)]
-        if subprocess.call(cmd) != 0:
-            raise Exception("Cannot change value of mptcp_enabled at " + str(value))
+        #cmd = ["ssh", "-p", self.remotePorts[num], self.remoteHostnames[num], "sudo sysctl net.mptcp.mptcp_enabled=" + str(value)]
+        #cmd = f"ssh -p {self.remotePorts[num]} {self.remoteHostnames[num]} \"sudo sysctl net.mptcp.mptcp_enabled={str(value)}\""
+        #if subprocess.run(cmd, timeout=8).returncode != 0:
+        #    raise Exception("Cannot change value of mptcp_enabled at " + str(value))
+
+        cmd = ["ssh", "-p", self.remotePorts[num], self.remoteHostnames[num],
+               "sudo stdbuf -i0 -o0 -e0 sysctl net.mptcp.mptcp_enabled=" + str(value)]
+        #if subprocess.run(cmd, bufsize=0).returncode != 0: #, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        #    raise Exception("Cannot change value of mptcp_enabled at " + str(value))
+        child = PopenSpawn(cmd, timeout=10)
+        child.expect('net.mptcp.mptcp_enabled = 1')
+        child.wait()
+        #print("mtcp enabled")
+        #sys.stdout.flush()
+        #cmd = f"ssh -p {self.remotePorts[num]} {self.remoteHostnames[num]} \"sudo sysctl net.mptcp.mptcp_enabled={str(value)}\""
+        #sub = subprocess.Popen(cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        #   #raise Exception("Cannot change value of mptcp_enabled at " + str(value))
+        #sub.communicate()
+        print("mtcp enabled")
 
     def changeOpenBup(self, num, value):
         """ Also disable the oracle if openBup is enabled """
@@ -224,6 +251,7 @@ class ExperienceLauncher(object):
         devnull = open(os.devnull, 'w')
         if subprocess.call(cmd, stdout=devnull, stderr=devnull) != 0:
             # raise Exception("Cannot clean mininet for thread " + str(num))
+            print("Cannot clean mininet for thread " + str(num))
             subprocess.Popen('ssh -p ' + self.remotePorts[num] + ' ' + self.remoteHostnames[num] + ' "sudo mn -c"',
                              shell=True, stdout=devnull, stderr=devnull)
             time.sleep(30)
@@ -248,6 +276,7 @@ class ExperienceLauncher(object):
         cmd = 'ssh -p ' + self.remotePorts[num] + ' ' + self.remoteHostnames[num] + \
               ' "cd ' + kwargs["tmpfs"] + '; sudo ~/git/minitopo/src/mpPerf.py -x ' + os.path.basename(kwargs["xpAbsPath"]) + ' -t ' + \
               os.path.basename(kwargs["topoAbsPath"]) + '"'
+
         MinitopoCommand(num, self.remoteHostnames[num], self.remotePorts[num], cmd, kwargs["workingDir"], self.testOkList).run(timeout=THREAD_TIMEOUT)
 
     def threadLaunchXp(self, num, **kwargs):
