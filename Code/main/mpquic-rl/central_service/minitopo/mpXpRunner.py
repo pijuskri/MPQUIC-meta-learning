@@ -9,15 +9,18 @@ from mpExperienceQUIC import MpExperienceQUIC
 from mpExperienceQUICReqres import MpExperienceQUICReqres
 from mpExperienceNone import MpExperienceNone
 from mpExperience import MpExperience
+from datetime import datetime
 
 class MpXpRunner:
 	def __init__(self, builderType, topoParamFile, xpParamFile):
+		print("Receive Time: ", datetime.now().strftime("%H:%M:%S"))
 		self.defParamXp(xpParamFile)
 		self.topoParam = MpParamTopo(topoParamFile)
 		self.defBuilder(builderType)
 		self.defTopo()
 		self.defConfig()
 		self.startTopo()
+		print("Start xp Time: ", datetime.now().strftime("%H:%M:%S"))
 		self.runXp()
 		self.stopTopo()
 

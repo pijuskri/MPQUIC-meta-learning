@@ -1,3 +1,9 @@
 #make middle output to stdout (cant do it the old way, cause causes pipe deadlock)
 #if stdout is not specified (instead of subprocess.PIPE), middleware causes the mtcp ssh to time out....
 #seems subprocess.PIPE is evil, should be avoided.
+
+make minitopo files generate while running and not just after
+make subprocesses fail correctly when exiting
+core py minitopo: fix the python 3 issue
+compiling go (server and client) takes 64s, can try fix by upgrading go. 
+Also ssh command at start of run / just compile it when moving from host

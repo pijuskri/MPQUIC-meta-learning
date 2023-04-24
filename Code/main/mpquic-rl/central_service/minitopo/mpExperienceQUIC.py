@@ -1,7 +1,7 @@
 from mpExperience import MpExperience
 from mpParamXp import MpParamXp
 import os
-
+import time
 
 class MpExperienceQUIC(MpExperience):
     GO_BIN = "/usr/local/go/bin/go"
@@ -75,7 +75,10 @@ class MpExperienceQUIC(MpExperience):
         self.clientpath = "/home/mininet/go/src/github.com/lucas-clemente/client" #root path on server
 
     def prepare(self):
+        now = time.time()
         MpExperience.prepare(self)
+        print("Time to clasic prepare: ", float(time.time() - now))
+        now = time.time()
         self.mpTopo.commandTo(self.mpConfig.client, "rm " + \
                               MpExperienceQUIC.CLIENT_LOG)
         self.mpTopo.commandTo(self.mpConfig.server, "rm " + \
@@ -99,6 +102,7 @@ class MpExperienceQUIC(MpExperience):
                                           "dd if=/dev/urandom of=random5 bs=1K count=" + \
                                           self.random_size5)
         # SHI: add random2
+        print("Time to mpquic prepare: ", float(time.time() - now))
 
     def getQUICServerCmd(self):
         s = "./server_main "
@@ -171,11 +175,18 @@ class MpExperienceQUIC(MpExperience):
         print(s)
         return s
 
+    #def compileGoFiles(self):
+    #    cmd = MpExperienceQUIC.GO_BIN + " build " + self.server_go_file + " &> quic_server_build.log"
+    #    self.mpTopo.commandTo(self.mpConfig.server, cmd)
+    #    self.mpTopo.commandTo(self.mpConfig.server, "mv main server_main")
+    #    cmd = MpExperienceQUIC.GO_BIN + " build " + self.client_go_file + " &> quic_client_build.log"
+    #    self.mpTopo.commandTo(self.mpConfig.server, cmd)
+
     def compileGoFiles(self):
-        cmd = MpExperienceQUIC.GO_BIN + " build " + self.server_go_file + " &>> quic_client.log"
+        cmd = MpExperienceQUIC.GO_BIN + " build " + self.server_go_file + " &> quic_server_build.log"
         self.mpTopo.commandTo(self.mpConfig.server, cmd)
         self.mpTopo.commandTo(self.mpConfig.server, "mv main server_main")
-        cmd = MpExperienceQUIC.GO_BIN + " build " + self.client_go_file + " &>> quic_client.log"
+        cmd = MpExperienceQUIC.GO_BIN + " build " + self.client_go_file + " &> quic_client_build.log"
         self.mpTopo.commandTo(self.mpConfig.server, cmd)
 
     def clean(self):
@@ -184,7 +195,10 @@ class MpExperienceQUIC(MpExperience):
             self.mpTopo.commandTo(self.mpConfig.client, "rm random*")
 
     def run(self):
-        self.compileGoFiles()
+        now = time.time()
+        #self.compileGoFiles()
+        print("Time to compile: ", float(time.time() - now))
+        now = time.time()
         cmd = self.getQUICServerCmd()
         self.mpTopo.commandTo(self.mpConfig.server, "netstat -sn > netstat_server_before")
         self.mpTopo.commandTo(self.mpConfig.server, cmd)

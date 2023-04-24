@@ -12,7 +12,7 @@ def get_request(queue: queue.Queue, logger, end_of_run: mp.Event = None):
             req, evt = queue.get(timeout=0.05)
             return req, evt
         except Exception as ex:
-            logger.error(repr(ex))
+            #logger.error(repr(ex))
             continue
     return None, None
 

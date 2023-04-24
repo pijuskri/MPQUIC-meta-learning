@@ -14,7 +14,9 @@ class MpExperience:
 		print(self.xpParam)
 
 	def classicRun(self):
+		now = time.time()
 		self.prepare()
+		#print("Time to prepare(): ", int(time.time() - now))
 		self.run()
 		self.clean()
 
@@ -22,19 +24,19 @@ class MpExperience:
 
 		now = time.time()
 		self.setupSysctl()
-		print(f"Time to execute setupSysctl(): {int(time.time() - now)}s")
+		#print("Time to execute setupSysctl(): ", int(time.time() - now))
 		now = time.time()
 		self.mpConfig.configureNetwork()
-		print(f"Time to execute mpConfig.configureNetwork(): {int(time.time() - now)}s")
+		#print("Time to execute mpConfig.configureNetwork(): ", int(time.time() - now))
 		now = time.time()
 		self.disableTSO()
-		print(f"Time to execute disableTSO(): {int(time.time() - now)}s")
+		#print("Time to execute disableTSO(): ", int(time.time() - now))
 		now = time.time()
 		self.runTcpDump()
-		print(f"Time to execute runTcpDump(): {int(time.time() - now)}s")
+		#print("Time to execute runTcpDump(): ", int(time.time() - now))
 		now = time.time()
 		self.runNetemAt()
-		print(f"Time to execute runNetemAt(): {int(time.time() - now)}s")
+		#print("Time to execute runNetemAt(): ", int(time.time() - now))
 		now = time.time()
 		pass
 

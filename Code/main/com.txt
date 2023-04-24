@@ -6,6 +6,7 @@ ssh -p 2222 mininet@localhost
 
 host setup(windows):
 install openSSH
+#pip3 install torch==1.13.1+cu117 torchvision>=0.13.1+cu117 torchaudio>=0.13.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117 --no-cache-dir
 
 vm setup:
 go get github.com/pebbe/zmq4
