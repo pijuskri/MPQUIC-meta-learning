@@ -744,52 +744,31 @@ def agent():
         put_response((response, ev2), tqueue, logger)
         ev2.wait()  # blocks until `consumer` (i.e. rh) receives response
 
-        with cqueue.mutex:
-            stream = list(cqueue.queue)[-1]
-
-        s = get_net_state(request)
-        aggr_srtt = s.normalized_srtt_path0 + s.normalized_srtt_path1
-        aggr_loss = s.normalized_loss_path0 + s.normalized_loss_path1
-
-        reward = (action_vec[0] * s.normalized_bwd_path0 + action_vec[1] * s.normalized_bwd_path1) - stream['CompletionTime'] - (0.8 * aggr_srtt) - (1.0 * aggr_loss)
-        return reward
-
     while not stop_env.is_set():
         log_probs = []
         values = []
         rewards = []
+        states = []
+        actions = []
 
         if stop_env.is_set():
             break
 
         state = np.zeros(S_INFO)
         step = 0
+        print("Epoch ", epoch)
         while not end_of_run.is_set():
-            print("Step ", step)
             # Get scheduling request from rhandler thread
             request, ev1 = get_request(tqueue, logger, end_of_run=end_of_run)
 
             if request is None and end_of_run.is_set():
                 break
 
-            ev1.set()
-
-            #path1_smoothed_RTT, path1_bandwidth, path1_packets, \
-            #    path1_retransmissions, path1_losses, \
-            #    path2_smoothed_RTT, path2_bandwidth, path2_packets, \
-            #    path2_retransmissions, path2_losses, \
-            #    = getTrainingVariables(request)
-            #
-            ## this should be S_INFO number of terms
-            #state[0] = (bdw_paths[0] - 1.0) / (100.0 - 1.0)  # bandwidth path1
-            #state[1] = (bdw_paths[1] - 1.0) / (100.0 - 1.0)  # bandwidth path2
-            #state[2] = ((path1_smoothed_RTT * 1000.0) - 1.0) / (120.0)  # max RTT so far 120ms
-            #state[3] = ((path2_smoothed_RTT * 1000.0) - 1.0) / (120.0)
-            #state[4] = ((path1_retransmissions + path1_losses) - 0.0) / 20.0
-            #state[5] = ((path2_retransmissions + path2_losses) - 0.0) / 20.0
+            ev1.set() # let `producer` (rh) know we received request
 
             ret_state = get_net_state(request)
             state = np.array(list(dataclasses.astuple(ret_state))) #convert state to list
+            states.append(ret_state)
 
             value, policy_dist = actor_critic.forward(state)
             value = value.detach().numpy()[0, 0]
@@ -799,10 +778,14 @@ def agent():
             log_prob = torch.log(policy_dist.squeeze(0)[action])
             entropy = -np.sum(np.mean(dist) * np.log(dist))
             #new_state, reward, done = env.step(action)
-            reward = env_send(request, action)
-            logger.info('Reward: {} at step {}'.format(reward, step))
+            env_send(request, action)
 
-            rewards.append(reward)
+            action_vec = np.zeros(A_DIM)
+            action_vec[action] = 1
+            actions.append(action_vec)
+            #logger.info('Reward: {} at step {}'.format(reward, step))
+
+            #rewards.append(reward)
             values.append(value)
             log_probs.append(log_prob)
             entropy_term += entropy
@@ -824,10 +807,32 @@ def agent():
             #    #                                                                                  -1]))
             #    break
 
+        if len(log_probs) == 0:
+            continue
+
         # compute Q values
         Qval, _ = actor_critic.forward(state)
         Qval = Qval.detach().numpy()[0, 0]
         Qvals = np.zeros_like(values)
+
+        stream_info = []
+        with cqueue.mutex:
+            for elem in list(cqueue.queue):
+                stream_info.append(elem)
+            # clear the queue
+            cqueue.queue.clear()
+
+        for i in range(len(states)):
+            s = states[i]
+            stream = stream_info[i]
+            aggr_srtt = s.normalized_srtt_path0 + s.normalized_srtt_path1
+            aggr_loss = s.normalized_loss_path0 + s.normalized_loss_path1
+
+            reward = (actions[i][0] * s.normalized_bwd_path0 + actions[i][1] * s.normalized_bwd_path1) - stream[
+                'CompletionTime'] - (0.8 * aggr_srtt) - (1.0 * aggr_loss)
+            rewards.append(reward)
+
+
         for t in reversed(range(len(rewards))):
             Qval = rewards[t] + GAMMA * Qval
             Qvals[t] = Qval
@@ -846,7 +851,7 @@ def agent():
         ac_loss.backward()
         ac_optimizer.step()
 
-        cqueue.queue.clear()
+        end_of_run.clear()
 
         logger.debug("====")
         logger.debug("Epoch: {}".format(epoch))
@@ -855,6 +860,7 @@ def agent():
         logger.debug(msg)
         logger.debug("====")
         epoch += 1
+
 
     stop_env.set()
     rhandler.stophandler()
