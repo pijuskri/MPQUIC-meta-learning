@@ -41,3 +41,6 @@ pexpect>=4.0.0
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch>=2.0.0
 learn2learn # currently broken because of qpth, install qpth-0.0.15.tar.gz
+gymnasium
+cherry-rl
+policies

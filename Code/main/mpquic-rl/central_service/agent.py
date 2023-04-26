@@ -661,7 +661,7 @@ class NetworkState:
     normalized_loss_path0: float
     normalized_loss_path1: float
 
-def agent():
+def torch_agent():
     np.random.seed(RANDOM_SEED)
 
     # Create results path

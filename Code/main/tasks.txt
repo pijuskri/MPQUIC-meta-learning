@@ -7,3 +7,5 @@ make subprocesses fail correctly when exiting
 core py minitopo: fix the python 3 issue
 compiling go (server and client) takes 64s, can try fix by upgrading go. 
 Also ssh command at start of run / just compile it when moving from host
+
+idea for env: return reward at the end step only, step includes sending and waiting for a request.
