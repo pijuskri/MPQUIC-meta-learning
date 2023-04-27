@@ -17,5 +17,9 @@ torch_wrapper.py
 runner_wrapper.py
 __init__.py
 
+#04/27
 avalance-rl files:
 rl_scenario.py (due to gym vs gymnasium)
+env_wrappers.py (due to use of gym=0.21)
+
+dqn.py, line 126. For some reason number of rollouts its not considered

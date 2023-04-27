@@ -273,6 +273,7 @@ class NetworkEnv(gym.Env):
 
         if self.request is None:
             self.request, ev1 = get_request(self.tqueue, self.logger, end_of_run=self.end_of_run)
+            #print(self.request)
             if self.request is not None:
                 ev1.set()  # let `producer` (rh) know we received request
 
@@ -311,6 +312,7 @@ class NetworkEnv(gym.Env):
         if request is None and self.end_of_run.is_set():
             reward = self.reward(action, True)
             print('done sent')
+            self.request = None
             if gym_compat:
                 return observation, reward, True, info
             return observation, reward, True, False, info
