@@ -167,10 +167,11 @@ def maml_a2c_loss(train_episodes, learner, baseline, gamma, tau):
     dones = train_episodes.done()
     next_states = train_episodes.next_state()
     log_probs = learner.log_prob(states, actions)
-    advantages = compute_advantages(baseline, tau, gamma, rewards,
-                                    dones, states, next_states)
-    advantages = ch.normalize(advantages).detach()
-    return a2c.policy_loss(log_probs, advantages)
+
+    #advantages = compute_advantages(baseline, tau, gamma, rewards,
+    #                                dones, states, next_states)
+    #advantages = ch.normalize(advantages).detach()
+    #return a2c.policy_loss(log_probs, advantages)
 
 
 def main(

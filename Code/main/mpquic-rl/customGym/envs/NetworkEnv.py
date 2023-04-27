@@ -1,7 +1,13 @@
 import numpy as np
 
-import gymnasium as gym
-from gymnasium import spaces
+gym_compat = True
+
+if gym_compat:
+    import gym
+    from gym import spaces
+else:
+    import gymnasium as gym
+    from gymnasium import spaces
 
 # global imports
 import dataclasses
@@ -36,6 +42,7 @@ SUMMARY_DIR = '../../central_service/logs/'
 LOG_FILE = '../../central_service/logs/tf_log.log'
 
 SSH_HOST = 'localhost'
+
 
 
 def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
@@ -184,6 +191,7 @@ class NetworkEnv(gym.Env):
         if self.request is not None:
             ret_state = self.get_net_state()
             return np.array(list(dataclasses.astuple(ret_state)))
+            #return torch.Tensor(list(dataclasses.astuple(ret_state)))
         else:
             raise Exception('Can not get observation when request is null')
 
@@ -249,7 +257,7 @@ class NetworkEnv(gym.Env):
 # and some auxiliary information. We can use the methods ``_get_obs`` and
 # ``_get_info`` that we implemented earlier for that:
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=None, options=None, return_info=False):
         # We need the following line to seed self.np_random
         print("reset")
         super().reset(seed=seed)
@@ -270,6 +278,8 @@ class NetworkEnv(gym.Env):
 
         observation = self._get_obs()
 
+        if gym_compat:
+            return observation
         return observation, info
 
 # %%
@@ -300,11 +310,16 @@ class NetworkEnv(gym.Env):
 
         if request is None and self.end_of_run.is_set():
             reward = self.reward(action, True)
+            print('done sent')
+            if gym_compat:
+                return observation, reward, True, info
             return observation, reward, True, False, info
 
         self.request = request
         ev1.set()  # let `producer` (rh) know we received request
 
+        if gym_compat:
+            return observation, reward, False, info
         return observation, reward, False, False, info
 
     #def _done(self):
@@ -333,6 +348,7 @@ class NetworkEnv(gym.Env):
 
     def close(self):
         self.stop_env.set()
+        self.end_of_run.set()
         self.rhandler.stophandler()
         self.collector.stophandler()
 

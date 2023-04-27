@@ -10,7 +10,12 @@ Also ssh command at start of run / just compile it when moving from host
 
 idea for env: return reward at the end step only, step includes sending and waiting for a request.
 
+the DICE model uses A2C with a linear reg. critic, replace with fully NN one
 
 modified cherry files:
 torch_wrapper.py
 runner_wrapper.py
+__init__.py
+
+avalance-rl files:
+rl_scenario.py (due to gym vs gymnasium)

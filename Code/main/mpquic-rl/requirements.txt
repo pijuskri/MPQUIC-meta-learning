@@ -43,4 +43,8 @@ torch>=2.0.0
 learn2learn # currently broken because of qpth, install qpth-0.0.15.tar.gz
 gymnasium
 cherry-rl
-policies
+
+avalanche-rl @ git+https://github.com/ContinualAI/avalanche-rl@main
+opencv-python
+ale-py
+gym==0.23.1 #needed for old versions
