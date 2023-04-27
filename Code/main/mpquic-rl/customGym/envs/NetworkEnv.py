@@ -98,14 +98,15 @@ class NetworkEnv(gym.Env):
 
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
-        self.observation_space = spaces.Tuple((
-            spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
-            spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
-            spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
-            spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
-            spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
-            spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
-        ))
+        #self.observation_space = spaces.Tuple((
+        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
+        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
+        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
+        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
+        #    spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
+        #    spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
+        #))
+        self.observation_space = spaces.Box(0, 100, shape=(6,), dtype=np.float64)
 
         self.action_space = spaces.Discrete(A_DIM)
         spaces.Space()
@@ -182,7 +183,7 @@ class NetworkEnv(gym.Env):
     def _get_obs(self):
         if self.request is not None:
             ret_state = self.get_net_state()
-            return list(dataclasses.astuple(ret_state))
+            return np.array(list(dataclasses.astuple(ret_state)))
         else:
             raise Exception('Can not get observation when request is null')
 
@@ -197,7 +198,7 @@ class NetworkEnv(gym.Env):
         #        self._agent_location - self._target_location, ord=1
         #    )
         #}
-        return None
+        return {}
 
     def reward(self, action, completed):
         action_vec = np.zeros(A_DIM)
@@ -250,6 +251,7 @@ class NetworkEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
+        print("reset")
         super().reset(seed=seed)
 
 
@@ -263,7 +265,8 @@ class NetworkEnv(gym.Env):
 
         if self.request is None:
             self.request, ev1 = get_request(self.tqueue, self.logger, end_of_run=self.end_of_run)
-            ev1.set()  # let `producer` (rh) know we received request
+            if self.request is not None:
+                ev1.set()  # let `producer` (rh) know we received request
 
         observation = self._get_obs()
 
@@ -284,8 +287,9 @@ class NetworkEnv(gym.Env):
 # use of ``_get_obs`` and ``_get_info``:
 
     def step(self, action):
-
+        print("step", action)
         self.env_send(self.request, action)
+        print("response sent")
 
         #terminated =
         reward = self.reward(action, False)
@@ -335,3 +339,8 @@ class NetworkEnv(gym.Env):
         # wait for threads and process to finish gracefully...
         for tp in self.tp_list:
             tp.join()
+
+    def sample_tasks(self, _):
+        return [1]
+    def set_task(self, _):
+        return None

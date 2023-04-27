@@ -1,1 +1,1 @@
-from NetworkEnv import NetworkEnv
+from .NetworkEnv import NetworkEnv
