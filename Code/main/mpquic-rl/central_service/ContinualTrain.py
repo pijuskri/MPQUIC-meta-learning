@@ -101,13 +101,13 @@ if __name__ == "__main__":
         # [Timestep(int(3e4)), Timestep(int(3e4))] * 2,
         per_experience_steps=[Timestep(int(1))],
         batch_size=1, exploration_fraction=.15,
-        final_epsilon=.01, max_steps_per_rollout=1,
+        final_epsilon=.01, max_steps_per_rollout=200,
         plugins=[HalveEps()], rollouts_per_step = 2,
         # external replay memory is automatically filled with initial size and
         # reset on new experience
         initial_replay_memory=memory, replay_memory_init_size=4000,
         double_dqn=True,
-        target_net_update_interval=1000, eval_every=int(5e4),
+        target_net_update_interval=1000, eval_every=0,
         eval_episodes=1, evaluator=evaluator, device=device)
 
     # TRAINING LOOP

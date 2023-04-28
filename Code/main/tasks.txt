@@ -23,3 +23,7 @@ rl_scenario.py (due to gym vs gymnasium)
 env_wrappers.py (due to use of gym=0.21)
 
 dqn.py, line 126. For some reason number of rollouts its not considered
+rl_base_strategy.py, line 494. Should not reset before close
+rl_base_strategy.py, line 397. Eval every cant be zero cause modulo
+
+issues with reset, perhaps modify server to send an initial network observation?
