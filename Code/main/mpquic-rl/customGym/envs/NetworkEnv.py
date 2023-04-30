@@ -144,7 +144,7 @@ class NetworkEnv(gym.Env):
         # keep record of threads and processes
         self.tp_list = [self.rhandler, self.collector, env]
 
-        self.logger = config_logger('agent', './logs/agent.log')
+        self.logger = config_logger('agent', './logs/env_gym.log')
         self.logger.info("Run Agent until training stops...")
 
         #THESE SHOULD BE RESET EACH EPISODE

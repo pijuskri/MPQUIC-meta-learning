@@ -1,0 +1,288 @@
+import dataclasses
+import math
+from dataclasses import dataclass
+
+import gym
+import numpy as np
+import torch
+from avalanche_rl.models.actor_critic import ActorCriticMLP
+from torch import optim
+
+from central_service.pytorch_models.metaModel import ActorCritic
+from central_service.utils.data_transf import getTrainingVariables
+from central_service.utils.logger import config_logger
+from customGym.envs.NetworkEnv import NetworkState
+
+S_INFO = 6
+A_DIM = 2
+
+class _ChangeFinderAbstract(object):
+    def _add_one(self, one, ts, size):
+        ts.append(one)
+        if len(ts) == size+1:
+            ts.pop(0)
+
+    def _smoothing(self, ts):
+        return sum(ts)/float(len(ts))
+
+
+def LevinsonDurbin(r, lpcOrder):
+    """
+    from http://aidiary.hatenablog.com/entry/20120415/1334458954
+    """
+    a = np.zeros(lpcOrder + 1, dtype=np.float64)
+    e = np.zeros(lpcOrder + 1, dtype=np.float64)
+
+    a[0] = 1.0
+    a[1] = - r[1] / r[0]
+    e[1] = r[0] + r[1] * a[1]
+    lam = - r[1] / r[0]
+
+    for k in range(1, lpcOrder):
+        lam = 0.0
+        for j in range(k + 1):
+            lam -= a[j] * r[k + 1 - j]
+        lam /= e[k]
+
+        U = [1]
+        U.extend([a[i] for i in range(1, k + 1)])
+        U.append(0)
+
+        V = [0]
+        V.extend([a[i] for i in range(k, 0, -1)])
+        V.append(1)
+
+        a = np.array(U) + lam * np.array(V)
+        e[k + 1] = e[k] * (1.0 - lam * lam)
+
+    return a, e[-1]
+
+class _SDAR_1Dim(object):
+    def __init__(self, r, order):
+        self._r = r
+        self._mu = np.random.random()
+        self._sigma = np.random.random()
+        self._order = order
+        self._c = np.random.random(self._order+1) / 100.0
+
+    def update(self, x, term):
+        assert len(term) >= self._order, "term must be order or more"
+        term = np.array(term)
+        self._mu = (1.0 - self._r) * self._mu + self._r * x
+        for i in range(1, self._order + 1):
+            self._c[i] = (1 - self._r) * self._c[i] + self._r * (x - self._mu) * (term[-i] - self._mu)
+        self._c[0] = (1-self._r)*self._c[0]+self._r * (x-self._mu)*(x-self._mu)
+        what, e = LevinsonDurbin(self._c, self._order)
+        xhat = np.dot(-what[1:], (term[::-1] - self._mu))+self._mu
+        self._sigma = (1-self._r)*self._sigma + self._r * (x-xhat) * (x-xhat)
+        return -math.log(math.exp(-0.5*(x-xhat)**2/self._sigma)/((2 * math.pi)**0.5*self._sigma**0.5)), xhat
+
+class ChangeFinder(_ChangeFinderAbstract):
+    def __init__(self, r=0.5, order=1, smooth=7):
+        assert order > 0, "order must be 1 or more."
+        assert smooth > 2, "term must be 3 or more."
+        self._smooth = smooth
+        self._smooth2 = int(round(self._smooth/2.0))
+        self._order = order
+        self._r = r
+        self._ts = []
+        self._first_scores = []
+        self._smoothed_scores = []
+        self._second_scores = []
+        self._sdar_first = _SDAR_1Dim(r, self._order)
+        self._sdar_second = _SDAR_1Dim(r, self._order)
+
+    def update(self, x):
+        score = 0
+        predict = x
+        predict2 = 0
+        if len(self._ts) == self._order:  # 第一段学習
+            score, predict = self._sdar_first.update(x, self._ts)
+            self._add_one(score, self._first_scores, self._smooth)
+        self._add_one(x, self._ts, self._order)
+        second_target = None
+        if len(self._first_scores) == self._smooth:  # 平滑化
+            second_target = self._smoothing(self._first_scores)
+        if second_target and len(self._smoothed_scores) == self._order:  # 第二段学習
+            score, predict2 = self._sdar_second.update(second_target, self._smoothed_scores)
+            self._add_one(score,
+                          self._second_scores, self._smooth2)
+        if second_target:
+            self._add_one(second_target, self._smoothed_scores, self._order)
+        if len(self._second_scores) == self._smooth2:
+            return self._smoothing(self._second_scores), predict
+        else:
+            return 0.0, predict
+
+
+@dataclass
+class SavedModel:
+    model: dict
+    start: NetworkState
+    end: NetworkState
+
+class FalconMemory:
+    def __init__(self):
+        self.lookback = 3
+        self.observations = []
+        self.cf = []
+        self.models: list[SavedModel] = []
+        for i in range(S_INFO):
+            #self.cf.append(ChangeFinder(r=0.5, order=1, smooth=3))#))
+            self.cf.append(ChangeFinder(r=0.4, order=1, smooth=3))  # ))
+    def findModel(self, cur_state):
+        for model in self.models:
+            start = dataclasses.astuple(model.start)
+            end = dataclasses.astuple(model.end)
+            ranges = [(min(start[i], end[i]), max(start[i], end[i])) for i in range(len(start))]
+            within_range = True
+            for i in range(len(ranges)):
+                min_v, max_v = ranges[i]
+                within_range = within_range and min_v <= cur_state[i] <= max_v
+            if within_range:
+                return model.model
+        return None # found no matching model
+    def add_model(self, start, end, model_state):
+        self.models.append(SavedModel(start, end, model_state))
+    def add_obs(self, obs, model_state):
+        change = False
+        probs = np.zeros(S_INFO)
+        for i, value in enumerate(obs):
+            probs[i], _ = self.cf[i].update(value)
+        #prob = np.cumprod(probs)
+        prob = np.cumprod(probs)[-1]
+        #print(obs)
+        print('network switch prob', np.mean(prob), np.cumprod(probs)[-1]) #, prob
+        #print()
+        if prob > 0.5:
+            start = self.observations[0]
+            end = self.observations[-3]
+            change = True
+            self.observations = [self.observations[-2], self.observations[-1]]
+            self.add_model(start, end, model_state)
+        self.observations.append(obs)
+        return change
+
+def test_change_detect():
+    before = [0.74747475, 0.04040404, 0.50918333, 0.16425, 0.1, 0.15]
+    after = [0.84848485, 0.57575758, 0.0, 0.0, 0.0, 0.0]
+    memory = FalconMemory()
+    for i in range(20):
+        memory.add_obs(before)
+    print("=================New env================")
+    for i in range(10):
+        memory.add_obs(after)
+def main():
+
+
+    num_inputs = S_INFO
+    num_outputs = A_DIM
+    max_steps = 100
+
+    # hyperparameters
+    hidden_size = 256
+    learning_rate = 3e-4
+
+    # Constants
+    GAMMA = 0.99
+
+    #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
+    print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
+    actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
+    ac_optimizer = optim.Adam(actor_critic.parameters(), lr=learning_rate)
+    print('model', actor_critic)
+
+    all_lengths = []
+    average_lengths = []
+    all_rewards = []
+    entropy_term = 0
+
+    env = gym.make('NetworkEnv')
+    memory = FalconMemory()
+
+    logger = config_logger('agent', './logs/agent.log')
+    logger.info("Run Agent until training stops...")
+
+    print("Starting agent")
+
+    for episode in range(3):
+        log_probs = []
+        values = []
+        rewards = []
+        states = []
+        actions = []
+
+        state = env.reset()
+        print("Episode ", episode)
+        for step in range(max_steps):
+
+            value, policy_dist = actor_critic.forward(torch.Tensor(state))
+            value = value.detach().numpy()[0, 0]#[0, 0]
+            #print(value)
+            dist = policy_dist.detach().numpy()
+
+            action = np.random.choice(num_outputs, p=np.squeeze(dist))
+            log_prob = torch.log(policy_dist.squeeze(0)[action])
+            entropy = -np.sum(np.mean(dist) * np.log(dist))
+            new_state, reward, done, info = env.step(action)
+            state = new_state
+            change = memory.add_obs(state, actor_critic.state_dict())
+            if change:
+                found = memory.findModel(state)
+                if found is not None:
+                    actor_critic.load_state_dict(found)
+                else: actor_critic.reset()
+            #states.append(state)
+
+            actions.append(action)
+            #logger.info('Reward: {} at step {}'.format(reward, step))
+
+            rewards.append(reward)
+            values.append(value)
+            log_probs.append(log_prob)
+            entropy_term += entropy
+
+            if done:
+                break
+
+        if len(log_probs) == 0:
+            continue
+
+        # compute Q values
+        Qval, _ = actor_critic.forward(torch.tensor(state))
+        Qval = Qval.detach().numpy()[0, 0]
+        Qvals = np.zeros_like(values)
+
+        for t in reversed(range(len(rewards))):
+            Qval = rewards[t] + GAMMA * Qval
+            Qvals[t] = Qval
+
+        # update actor critic
+        values = torch.FloatTensor(values)
+        Qvals = torch.FloatTensor(Qvals)
+        log_probs = torch.stack(log_probs)
+
+        advantage = Qvals - values
+        actor_loss = (-log_probs * advantage).mean()
+        critic_loss = 0.5 * advantage.pow(2).mean()
+        ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
+
+        ac_optimizer.zero_grad()
+        ac_loss.backward()
+        ac_optimizer.step()
+
+        logger.debug("====")
+        logger.debug("Epoch: {}".format(episode))
+        msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(rewards),
+                                                                    entropy_term)
+        logger.debug(msg)
+        logger.debug("====")
+
+
+    env.close()
+
+if __name__ == '__main__':
+    #main()
+    test_change_detect()
+
+

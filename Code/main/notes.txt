@@ -1,0 +1,20 @@
+the DICE model uses A2C with a linear reg. critic, replace with fully NN one
+
+modified cherry files:
+torch_wrapper.py
+runner_wrapper.py
+__init__.py
+
+#04/27
+avalance-rl files:
+rl_scenario.py (due to gym vs gymnasium)
+env_wrappers.py (due to use of gym=0.21)
+
+dqn.py, line 126. For some reason number of rollouts its not considered
+rl_base_strategy.py, line 494. Should not reset before close
+rl_base_strategy.py, line 397. Eval every cant be zero cause modulo
+
+issues with reset, perhaps modify server to send an initial network observation?
+
+#04/28
+Calling reset before closes causes issues. Can be fixed by making initial observation be based on topo used by env.

@@ -35,9 +35,11 @@ class ActorCritic(nn.Module):
 
         self.actor_linear1 = nn.Linear(num_inputs, hidden_size)
         self.actor_linear2 = nn.Linear(hidden_size, num_actions)
+        #self.actor
 
     def forward(self, state):
-        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        #state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        state = Variable(state.float().unsqueeze(0))
         value = F.relu(self.critic_linear1(state))
         value = self.critic_linear2(value)
 
@@ -45,6 +47,22 @@ class ActorCritic(nn.Module):
         policy_dist = F.softmax(self.actor_linear2(policy_dist), dim=1)
 
         return value, policy_dist
+
+    def reset(self):
+        self.apply(ActorCritic.init_weights)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, mean=0.0, std=0.1)  ## or simply use your layer.reset_parameters()
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, mean=0.0, std=np.sqrt(1 / m.in_features))
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        if isinstance(m, nn.Conv1d):
+            nn.init.normal_(m.weight, mean=0.0, std=np.sqrt(4 / m.in_channels))
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
 
 class MetaModel():
     def __init__(self, num_inputs, num_outputs):
