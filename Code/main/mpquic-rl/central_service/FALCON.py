@@ -11,10 +11,18 @@ from torch import optim
 from central_service.pytorch_models.metaModel import ActorCritic
 from central_service.utils.data_transf import getTrainingVariables
 from central_service.utils.logger import config_logger
-from customGym.envs.NetworkEnv import NetworkState
+from customGym.envs.NetworkEnv import NetworkEnv
+#from customGym.envs.NetworkEnv import NetworkState
+from typing import NamedTuple
 
 S_INFO = 6
 A_DIM = 2
+# hyperparameters
+hidden_size = 256
+learning_rate = 3e-4
+
+# Constants
+GAMMA = 0.99
 
 class _ChangeFinderAbstract(object):
     def _add_one(self, one, ts, size):
@@ -116,6 +124,15 @@ class ChangeFinder(_ChangeFinderAbstract):
 
 
 @dataclass
+class NetworkState:
+    normalized_bwd_path0: float
+    normalized_bwd_path1: float
+    normalized_srtt_path0: float
+    normalized_srtt_path1: float
+    normalized_loss_path0: float
+    normalized_loss_path1: float
+
+@dataclass
 class SavedModel:
     model: dict
     start: NetworkState
@@ -132,6 +149,7 @@ class FalconMemory:
             self.cf.append(ChangeFinder(r=0.4, order=1, smooth=3))  # ))
     def findModel(self, cur_state):
         for model in self.models:
+            #print(model)
             start = dataclasses.astuple(model.start)
             end = dataclasses.astuple(model.end)
             ranges = [(min(start[i], end[i]), max(start[i], end[i])) for i in range(len(start))]
@@ -143,7 +161,7 @@ class FalconMemory:
                 return model.model
         return None # found no matching model
     def add_model(self, start, end, model_state):
-        self.models.append(SavedModel(start, end, model_state))
+        self.models.append(SavedModel(model_state, NetworkState(*start), NetworkState(*end)))
     def add_obs(self, obs, model_state):
         change = False
         probs = np.zeros(S_INFO)
@@ -154,7 +172,7 @@ class FalconMemory:
         #print(obs)
         print('network switch prob', np.mean(prob), np.cumprod(probs)[-1]) #, prob
         #print()
-        if prob > 0.5:
+        if prob > 0.5: #0.5
             start = self.observations[0]
             end = self.observations[-3]
             change = True
@@ -168,23 +186,73 @@ def test_change_detect():
     after = [0.84848485, 0.57575758, 0.0, 0.0, 0.0, 0.0]
     memory = FalconMemory()
     for i in range(20):
-        memory.add_obs(before)
+        memory.add_obs(before, None)
     print("=================New env================")
     for i in range(10):
-        memory.add_obs(after)
+        memory.add_obs(after, None)
+class ReplayMemory:
+    def __init__(self):
+        self.log_probs = []
+        self.values = []
+        self.rewards = []
+        self.actions = []
+        self.entropy_term = []
+        #self.logger = logger
+    def update_memory(self, action, value, policy_dist, reward):
+        dist = policy_dist.detach().numpy()
+        log_prob = torch.log(policy_dist.squeeze(0)[action])
+        entropy = -np.sum(np.mean(dist) * np.log(dist))
+
+        self.actions.append(action)
+
+        self.rewards.append(reward)
+        self.values.append(value)
+        self.log_probs.append(log_prob)
+        self.entropy_term.append(entropy)
+        #self.entropy_term += entropy
+    def get_memory(self, length=-1):
+        if length < 0:
+            length = len(self.log_probs)
+        entropy_term = np.sum(self.entropy_term[-length:])
+        #Qval, values, rewards, log_probs, entropy_term
+        return self.values[-1], self.values[-length:], self.rewards[-length:], self.log_probs[-length:], entropy_term
+
+    def clear(self):
+        self.log_probs = []
+        self.values = []
+        self.rewards = []
+        self.actions = []
+        self.entropy_term = []
+
+    def __len__(self):
+        return len(self.values)
+def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
+
+    #Qval = Qval.detach().numpy()[0, 0]
+    Qvals = np.zeros_like(values)
+
+    for t in reversed(range(len(rewards))):
+        Qval = rewards[t] + GAMMA * Qval
+        Qvals[t] = Qval
+
+    # update actor critic
+    values = torch.FloatTensor(values)
+    Qvals = torch.FloatTensor(Qvals)
+    log_probs = torch.stack(log_probs)
+
+    advantage = Qvals - values
+    actor_loss = (-log_probs * advantage).mean()
+    critic_loss = 0.5 * advantage.pow(2).mean()
+    ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
+
+    return ac_loss
 def main():
 
 
     num_inputs = S_INFO
     num_outputs = A_DIM
     max_steps = 100
-
-    # hyperparameters
-    hidden_size = 256
-    learning_rate = 3e-4
-
-    # Constants
-    GAMMA = 0.99
+    apply_loss_steps = 6
 
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
     print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
@@ -195,94 +263,79 @@ def main():
     all_lengths = []
     average_lengths = []
     all_rewards = []
-    entropy_term = 0
+    #entropy_term = 0
+    total_steps = 0
 
     env = gym.make('NetworkEnv')
     memory = FalconMemory()
+    replay_memory = ReplayMemory()
 
     logger = config_logger('agent', './logs/agent.log')
     logger.info("Run Agent until training stops...")
 
     print("Starting agent")
+    with torch.autograd.set_detect_anomaly(True):
+        for episode in range(3):
+            state = env.reset()
+            print("Episode ", episode)
+            for step in range(max_steps):
 
-    for episode in range(3):
-        log_probs = []
-        values = []
-        rewards = []
-        states = []
-        actions = []
+                value, policy_dist = actor_critic.forward(torch.Tensor(state))
+                value = value.detach().numpy()[0, 0]#[0, 0]
+                #print(value)
+                dist = policy_dist.detach().numpy()
 
-        state = env.reset()
-        print("Episode ", episode)
-        for step in range(max_steps):
+                action = np.random.choice(num_outputs, p=np.squeeze(dist))
 
-            value, policy_dist = actor_critic.forward(torch.Tensor(state))
-            value = value.detach().numpy()[0, 0]#[0, 0]
-            #print(value)
-            dist = policy_dist.detach().numpy()
+                new_state, reward, done, info = env.step(action)
+                state = new_state
 
-            action = np.random.choice(num_outputs, p=np.squeeze(dist))
-            log_prob = torch.log(policy_dist.squeeze(0)[action])
-            entropy = -np.sum(np.mean(dist) * np.log(dist))
-            new_state, reward, done, info = env.step(action)
-            state = new_state
-            change = memory.add_obs(state, actor_critic.state_dict())
-            if change:
-                found = memory.findModel(state)
-                if found is not None:
-                    actor_critic.load_state_dict(found)
-                else: actor_critic.reset()
-            #states.append(state)
+                replay_memory.update_memory(action, value, policy_dist, reward)
 
-            actions.append(action)
-            #logger.info('Reward: {} at step {}'.format(reward, step))
+                change = memory.add_obs(state, actor_critic.state_dict())
+                if change:
+                    found = memory.findModel(state)
+                    if found is not None:
+                        actor_critic.load_state_dict(found)
+                    else: actor_critic.reset()
+                    replay_memory.clear()
+                #states.append(state)
 
-            rewards.append(reward)
-            values.append(value)
-            log_probs.append(log_prob)
-            entropy_term += entropy
+                #TODO make sure replay memory loss is used for previous model after change reset
+                if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
+                    memory_values = replay_memory.get_memory(apply_loss_steps)
+                    ac_loss = calc_a2c_loss(*memory_values)
+                    ac_optimizer.zero_grad()
+                    ac_loss.backward()
+                    ac_optimizer.step()
 
-            if done:
-                break
+                    msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
+                                                                                np.mean(replay_memory.entropy_term))
+                    logger.debug(msg)
 
-        if len(log_probs) == 0:
-            continue
 
-        # compute Q values
-        Qval, _ = actor_critic.forward(torch.tensor(state))
-        Qval = Qval.detach().numpy()[0, 0]
-        Qvals = np.zeros_like(values)
+                total_steps += 1
 
-        for t in reversed(range(len(rewards))):
-            Qval = rewards[t] + GAMMA * Qval
-            Qvals[t] = Qval
+                if done:
+                    break
 
-        # update actor critic
-        values = torch.FloatTensor(values)
-        Qvals = torch.FloatTensor(Qvals)
-        log_probs = torch.stack(log_probs)
+            #if len(log_probs) == 0:
+            #    continue
 
-        advantage = Qvals - values
-        actor_loss = (-log_probs * advantage).mean()
-        critic_loss = 0.5 * advantage.pow(2).mean()
-        ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
-
-        ac_optimizer.zero_grad()
-        ac_loss.backward()
-        ac_optimizer.step()
-
-        logger.debug("====")
-        logger.debug("Epoch: {}".format(episode))
-        msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(rewards),
-                                                                    entropy_term)
-        logger.debug(msg)
-        logger.debug("====")
+            # compute Q values
+            #Qval, _ = actor_critic.forward(torch.tensor(state))
+            logger.debug("====")
+            logger.debug("Epoch: {}".format(episode))
+            #msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
+            #                                                            entropy_term)
+            #logger.debug(msg)
+            logger.debug("====")
 
 
     env.close()
 
 if __name__ == '__main__':
-    #main()
-    test_change_detect()
+    main()
+    #test_change_detect()
 
 

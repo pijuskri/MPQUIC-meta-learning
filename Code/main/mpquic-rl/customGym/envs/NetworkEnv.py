@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 import numpy as np
 
 gym_compat = True

@@ -44,9 +44,9 @@ class ActorCritic(nn.Module):
         value = self.critic_linear2(value)
 
         policy_dist = F.relu(self.actor_linear1(state))
-        policy_dist = F.softmax(self.actor_linear2(policy_dist), dim=1)
+        policy_dist_1 = F.softmax(self.actor_linear2(policy_dist), dim=1)
 
-        return value, policy_dist
+        return value, policy_dist_1
 
     def reset(self):
         self.apply(ActorCritic.init_weights)
