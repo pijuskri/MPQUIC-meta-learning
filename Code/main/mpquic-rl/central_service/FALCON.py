@@ -4,8 +4,10 @@ from dataclasses import dataclass
 
 import gym
 import numpy as np
+import scipy
 import torch
 from avalanche_rl.models.actor_critic import ActorCriticMLP
+from matplotlib import pyplot as plt
 from torch import optim
 
 from central_service.pytorch_models.metaModel import ActorCritic
@@ -23,6 +25,7 @@ learning_rate = 3e-4
 
 # Constants
 GAMMA = 0.99
+
 
 class _ChangeFinderAbstract(object):
     def _add_one(self, one, ts, size):
@@ -172,7 +175,7 @@ class FalconMemory:
         #print(obs)
         print('network switch prob', np.mean(prob), np.cumprod(probs)[-1]) #, prob
         #print()
-        if prob > 0.5: #0.5
+        if prob > 99999.5: #0.5
             start = self.observations[0]
             end = self.observations[-3]
             change = True
@@ -275,7 +278,7 @@ def main():
 
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(3):
+        for episode in range(6):
             state = env.reset()
             print("Episode ", episode)
             for step in range(max_steps):
@@ -331,11 +334,32 @@ def main():
             #logger.debug(msg)
             logger.debug("====")
 
-
+    np.savetxt("logs/rewards.csv",
+               np.array(replay_memory.rewards),
+               delimiter=", ",
+               fmt='% s')
+    plt.plot(moving_average(replay_memory.rewards, 5))
+    plt.show()
     env.close()
 
+#def moving_average(a, n=3):
+#    ret = np.cumsum(a, dtype=float)
+#    ret[n:] = ret[n:] - ret[:-n]
+#    return ret[n - 1:] / n
+
+#def moving_average(x, w):
+#    return np.convolve(x, np.ones(w), 'valid') / w
+#def moving_average(x, w):
+#    return scipy.ndimage.gaussian_filter1d(x, (np.std(x) * w * 5)/(len(x)))
+def moving_average(x, w):
+    m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
+    return scipy.ndimage.gaussian_filter1d(m, (np.std(x) * w * 5)/(len(x)))
 if __name__ == '__main__':
-    main()
+    #main()
+    data = np.genfromtxt('logs/rewards.csv', delimiter=',')
+    print(len(data))
+    plt.plot(moving_average(data, 10))
+    plt.show()
     #test_change_detect()
 
 
