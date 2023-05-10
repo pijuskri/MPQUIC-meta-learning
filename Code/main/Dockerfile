@@ -6,6 +6,10 @@ WORKDIR /root
 
 COPY ENTRYPOINT.sh /
 
+#COPY mininet/ /home/mininet/
+ADD mininet.tar.gz /home/
+#RUN yes| unminimize #unsure if needed
+
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
     curl \
     dnsutils \
@@ -23,8 +27,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
     xterm \
     python3 \
     python3-pip \
+	nano\
 	git \
 	sudo\
+	openssh-server\
  && rm -rf /var/lib/apt/lists/* \
  && touch /etc/network/interfaces \
  && chmod +x /ENTRYPOINT.sh
@@ -36,17 +42,39 @@ EXPOSE 6633 6653 6640 22
 
 #go1.20.4
 #go1.16.15
-#COPY mininet/ mininet/
-
-#add mininet user
-RUN useradd -rm -d /home/mininet -s /bin/bash -g root -G sudo -u 1001 mininet
-USER mininet
-WORKDIR /home/mininet
 
 #Install go
 RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.12.2.linux-amd64.tar.gz
-ENV PATH="$PATH:/usr/local/go/bin"
+RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
+ENV PATH="$PATH:/home/mininet/go/bin"
 
+#add mininet user
+RUN useradd -rm -d /home/mininet -s /bin/bash -g root -G sudo -u 1001 -p $(openssl passwd -1 mininet) mininet
+RUN usermod -aG sudo mininet
+#set root password
+RUN echo 'root:root' | chpasswd
+
+#RUN apt-get update && apt-get install -y openssh-server
+#RUN mkdir /var/run/sshd
+#
+#RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+#RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+#RUN DEBIAN_FRONTEND=noninteractive apt-get install -y 
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/^UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
+
+WORKDIR /home/mininet
+#COPY id_rsa.pub /home/mininet
+##RUN mkdir ~/.ssh && cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
+#RUN mkdir -p .ssh && cat id_rsa.pub >> .ssh/authorized_keys
+
+COPY id_rsa.pub /home/mininet/.ssh/authorized_keys
+RUN chown -R mininet: /home/mininet/.ssh
+RUN chmod 600 /home/mininet/.ssh/authorized_keys
+COPY id_rsa.pub /root/.ssh/authorized_keys
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]
+#USER mininet

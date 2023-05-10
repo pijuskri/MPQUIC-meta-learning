@@ -39,8 +39,12 @@ mn --test pingall # test mininet
 #05/10
 for some reason docker now works, before was stuck on starting engine. Perhaps installing docker on wsl made it work?
 Yep that was the reason. I had added wsl integration with both default and test distros. It tried to run the non default distro but it did not have docker correctly set up.
+happened again. What fixed it was wsl --shutdown while docker still starting or going to ubuntu and running docker there
+indeed seems like shutting down, docker stats on ubuntu and then starting docker desktop makes it work.
 
 #mininet resource limits error, not sure if causes problems
 https://github.com/moby/moby/issues/39518
 https://stackoverflow.com/questions/42920605/mininets-cli-get-errorerror-setting-resource-limits-mininets-performance-may
 https://github.com/mininet/mininet/issues/529
+
+if ssh error changed, delete C:\Users\Admin\.ssh\known_hosts
