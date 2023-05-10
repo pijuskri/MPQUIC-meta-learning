@@ -24,15 +24,23 @@ Compiling linux kernel for use in docker, used these guides
 https://hackmd.io/@jxzhe/rkjEdtN13
 https://gist.github.com/oleksis/eb6d2f1cd2a6946faefb139aa0e38c35
 https://wsl.dev/wslcilium/
+https://zhuanlan.zhihu.com/p/138933513
 https://github.com/microsoft/WSL/issues/8319 (make sure to have all files in wsl home)
 https://forums.docker.com/t/docker-credential-desktop-exe-executable-file-not-found-in-path-using-wsl2/100225/5
 
-kernel=C:\\Users\\Admin\\bzImage
+kernel=C:\\Users\\Admin\\bzImage #kernel option in .wslconfig
 
+run docker inside wsl:
 cd /mnt/c/Programming/MPQUIC-meta-learning/Code/main
 sh runDocker.sh
-exit
-mn --test pingall
+exit #to exit
+mn --test pingall # test mininet
 
 #05/10
-https://zhuanlan.zhihu.com/p/138933513
+for some reason docker now works, before was stuck on starting engine. Perhaps installing docker on wsl made it work?
+Yep that was the reason. I had added wsl integration with both default and test distros. It tried to run the non default distro but it did not have docker correctly set up.
+
+#mininet resource limits error, not sure if causes problems
+https://github.com/moby/moby/issues/39518
+https://stackoverflow.com/questions/42920605/mininets-cli-get-errorerror-setting-resource-limits-mininets-performance-may
+https://github.com/mininet/mininet/issues/529

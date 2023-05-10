@@ -1,20 +1,4 @@
-#FROM iwaseyusuke/mininet:ubuntu-20.04
-#FROM containernet/containernet
-#COPY id_rsa.pub ~/.ssh/authorized_keys
-
-#RUN apt-get update && \
-#      apt-get -y install sudo
-#
-#RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
-#
-#USER docker
-#RUN echo 'root:Docker!' | chpasswd
-#RUN echo 'docker:docker' | chpasswd
-
-#RUN ./mount_tmpfs.sh
-
-
-
+#entry copied from https://github.com/rixsilverith/mininet-docker/tree/main
 FROM ubuntu:22.04
 
 USER root
@@ -40,31 +24,29 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
     python3 \
     python3-pip \
 	git \
+	sudo\
  && rm -rf /var/lib/apt/lists/* \
  && touch /etc/network/interfaces \
  && chmod +x /ENTRYPOINT.sh
+ 
+#ensure we can connect to the internet
+RUN sysctl -w net.ipv4.ip_forward=1
 
-EXPOSE 6633 6653 6640
+EXPOSE 6633 6653 6640 22
 
 #go1.20.4
 #go1.16.15
-#COPY mpquic-rl/
+#COPY mininet/ mininet/
+
+#add mininet user
+RUN useradd -rm -d /home/mininet -s /bin/bash -g root -G sudo -u 1001 mininet
+USER mininet
+WORKDIR /home/mininet
+
+#Install go
 RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.12.2.linux-amd64.tar.gz
 ENV PATH="$PATH:/usr/local/go/bin"
 
-#RUN DEBIAN_FRONTEND=noninteractive go get github.com/lucas-clemente/quic-go && cd ~/go/src/github.com/lucas-clemente/quic-go &&\
-# git remote add mp-quic https://github.com/qdeconinck/mp-quic.git && git fetch mp-quic && git checkout conext17 && go get -t -u ./...
-
-
-#RUN DEBIAN_FRONTEND=noninteractive go get github.com/lucas-clemente/quic-go
-#RUN go get github.com/quic-go/quic-go
-#RUN mv ~/go/src/github.com/quic-go/quic-go ~/go/src/github.com/lucas-clemente/quic-go
-#RUN cd ~/go/src/github.com/lucas-clemente/quic-go &&\
-#git remote add mp-quic https://github.com/qdeconinck/mp-quic.git && git fetch mp-quic && git checkout conext17
-
-#RUN curl -OL https://redirector.gvt1.com/edgedl/go/go1.9.2.linux-amd64.tar.gz
-#RUN tar -C /usr/local -xzf go1.9.2.linux-amd64.tar.gz
-#ENV PATH="$PATH:/usr/local/go/bin"
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]
