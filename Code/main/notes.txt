@@ -18,3 +18,21 @@ issues with reset, perhaps modify server to send an initial network observation?
 
 #04/28
 Calling reset before closes causes issues. Can be fixed by making initial observation be based on topo used by env.
+
+#05/09
+Compiling linux kernel for use in docker, used these guides
+https://hackmd.io/@jxzhe/rkjEdtN13
+https://gist.github.com/oleksis/eb6d2f1cd2a6946faefb139aa0e38c35
+https://wsl.dev/wslcilium/
+https://github.com/microsoft/WSL/issues/8319 (make sure to have all files in wsl home)
+https://forums.docker.com/t/docker-credential-desktop-exe-executable-file-not-found-in-path-using-wsl2/100225/5
+
+kernel=C:\\Users\\Admin\\bzImage
+
+cd /mnt/c/Programming/MPQUIC-meta-learning/Code/main
+sh runDocker.sh
+exit
+mn --test pingall
+
+#05/10
+https://zhuanlan.zhihu.com/p/138933513

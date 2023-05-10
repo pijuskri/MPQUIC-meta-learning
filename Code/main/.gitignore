@@ -128,3 +128,6 @@ kvm-mpquic.vmdk
 *.vmdk
 *.vdi
 *.img
+
+#temporary
+/mininet
