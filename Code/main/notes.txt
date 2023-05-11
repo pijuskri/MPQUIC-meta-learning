@@ -48,3 +48,7 @@ https://stackoverflow.com/questions/42920605/mininets-cli-get-errorerror-setting
 https://github.com/mininet/mininet/issues/529
 
 if ssh error changed, delete C:\Users\Admin\.ssh\known_hosts
+
+#05/11
+seems when running docker through wsl, ssh without password does not work. Git bash might be bad cause /lib/modules cant be accessed
+running local docker on wsl seems to work

@@ -7,7 +7,7 @@ WORKDIR /root
 COPY ENTRYPOINT.sh /
 
 #COPY mininet/ /home/mininet/
-ADD mininet.tar.gz /home/
+
 #RUN yes| unminimize #unsure if needed
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
@@ -35,6 +35,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
  && touch /etc/network/interfaces \
  && chmod +x /ENTRYPOINT.sh
  
+RUN useradd -rm -d /home/mininet -s /bin/bash -g root -G sudo -u 1001 -p $(openssl passwd -1 mininet) mininet
+ADD --chown=mininet mininet.tar.gz /home/mininet/
+ 
 #ensure we can connect to the internet
 RUN sysctl -w net.ipv4.ip_forward=1
 
@@ -44,13 +47,13 @@ EXPOSE 6633 6653 6640 22
 #go1.16.15
 
 #Install go
-RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
-RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
-ENV PATH="$PATH:/home/mininet/go/bin"
+#RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
+#RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
+#ENV PATH="$PATH:/home/mininet/go/bin"
 
 #add mininet user
-RUN useradd -rm -d /home/mininet -s /bin/bash -g root -G sudo -u 1001 -p $(openssl passwd -1 mininet) mininet
-RUN usermod -aG sudo mininet
+
+#RUN usermod -aG sudo mininet
 #set root password
 RUN echo 'root:root' | chpasswd
 
@@ -61,10 +64,13 @@ RUN echo 'root:root' | chpasswd
 #RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
 #RUN DEBIAN_FRONTEND=noninteractive apt-get install -y 
+#RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+#RUN sed -ri 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+#RUN sed -ri 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+#RUN sed -ri 's/^UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
+
+RUN apt-get update && apt-get install -y openssh-server
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -ri 's/^UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
 
 WORKDIR /home/mininet
 #COPY id_rsa.pub /home/mininet
@@ -73,8 +79,15 @@ WORKDIR /home/mininet
 
 COPY id_rsa.pub /home/mininet/.ssh/authorized_keys
 RUN chown -R mininet: /home/mininet/.ssh
-RUN chmod 600 /home/mininet/.ssh/authorized_keys
+RUN chmod 644 /home/mininet/.ssh/authorized_keys
 COPY id_rsa.pub /root/.ssh/authorized_keys
+COPY id_rsa.pub /etc/ssh/authorized_keys
+RUN chmod 644 /etc/ssh/authorized_keys
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]
 #USER mininet
+
+#RUN useradd -m -s /bin/bash mininet
+#COPY id_rsa.pub /home/mininet/.ssh/authorized_keys
+#RUN chown -R mininet:mininet /home/mininet/.ssh
+#RUN chmod 600 /home/mininet/.ssh/authorized_keys
