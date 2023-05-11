@@ -6,8 +6,6 @@ WORKDIR /root
 
 COPY ENTRYPOINT.sh /
 
-#COPY mininet/ /home/mininet/
-
 #RUN yes| unminimize #unsure if needed
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
@@ -47,17 +45,17 @@ EXPOSE 6633 6653 6640 22
 #go1.16.15
 
 #Install go
-#RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
-#RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
-#ENV PATH="$PATH:/home/mininet/go/bin"
+RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
+RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
+ENV PATH="$PATH:/home/mininet/go/bin"
 
 #add mininet user
 
-#RUN usermod -aG sudo mininet
+RUN usermod -aG sudo mininet
+
 #set root password
 RUN echo 'root:root' | chpasswd
 
-#RUN apt-get update && apt-get install -y openssh-server
 #RUN mkdir /var/run/sshd
 #
 #RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -69,13 +67,9 @@ RUN echo 'root:root' | chpasswd
 #RUN sed -ri 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 #RUN sed -ri 's/^UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
 
-RUN apt-get update && apt-get install -y openssh-server
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 WORKDIR /home/mininet
-#COPY id_rsa.pub /home/mininet
-##RUN mkdir ~/.ssh && cat ~/id_rsa.pub >> ~/.ssh/authorized_keys
-#RUN mkdir -p .ssh && cat id_rsa.pub >> .ssh/authorized_keys
 
 COPY id_rsa.pub /home/mininet/.ssh/authorized_keys
 RUN chown -R mininet: /home/mininet/.ssh
@@ -86,8 +80,3 @@ RUN chmod 644 /etc/ssh/authorized_keys
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]
 #USER mininet
-
-#RUN useradd -m -s /bin/bash mininet
-#COPY id_rsa.pub /home/mininet/.ssh/authorized_keys
-#RUN chown -R mininet:mininet /home/mininet/.ssh
-#RUN chmod 600 /home/mininet/.ssh/authorized_keys

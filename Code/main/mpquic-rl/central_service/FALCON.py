@@ -355,11 +355,11 @@ def moving_average(x, w):
     m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
     return scipy.ndimage.gaussian_filter1d(m, (np.std(x) * w * 5)/(len(x)))
 if __name__ == '__main__':
-    #main()
-    data = np.genfromtxt('logs/rewards.csv', delimiter=',')
-    print(len(data))
-    plt.plot(moving_average(data, 10))
-    plt.show()
+    main()
+    #data = np.genfromtxt('logs/rewards.csv', delimiter=',')
+    #print(len(data))
+    #plt.plot(moving_average(data, 10))
+    #plt.show()
     #test_change_detect()
 
 

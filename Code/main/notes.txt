@@ -37,6 +37,7 @@ exit #to exit
 mn --test pingall # test mininet
 
 #05/10
+https://www.howtogeek.com/devops/how-to-ssh-into-a-docker-container/
 for some reason docker now works, before was stuck on starting engine. Perhaps installing docker on wsl made it work?
 Yep that was the reason. I had added wsl integration with both default and test distros. It tried to run the non default distro but it did not have docker correctly set up.
 happened again. What fixed it was wsl --shutdown while docker still starting or going to ubuntu and running docker there
