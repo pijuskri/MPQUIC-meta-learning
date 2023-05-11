@@ -49,6 +49,11 @@ RUN curl -OL https://golang.org/dl/go1.12.2.linux-amd64.tar.gz
 RUN tar -C /home/mininet/ -xzf go1.12.2.linux-amd64.tar.gz #/usr/local
 ENV PATH="$PATH:/home/mininet/go/bin"
 
+# Install deb packages
+#ADD mptcp_debs /mptcp_debs/
+#COPY enable-mtcp.sh /
+#CMD ["/enable-mtcp.sh"]
+
 #add mininet user
 
 RUN usermod -aG sudo mininet
@@ -77,6 +82,14 @@ RUN chmod 644 /home/mininet/.ssh/authorized_keys
 COPY id_rsa.pub /root/.ssh/authorized_keys
 COPY id_rsa.pub /etc/ssh/authorized_keys
 RUN chmod 644 /etc/ssh/authorized_keys
+
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+RUN echo "alias python=/usr/bin/python3" >> ~/.bash_profile
+RUN echo 'alias python=/usr/bin/python3' >> ~/.bashrc
+RUN cp /usr/bin/python3 /usr/bin/python
+
+COPY mpquic-rl/central_service/minitopo /home/mininet/git/minitopo/src/
 
 ENTRYPOINT ["/ENTRYPOINT.sh"]
 #USER mininet

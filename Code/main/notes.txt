@@ -38,6 +38,7 @@ mn --test pingall # test mininet
 
 #05/10
 https://www.howtogeek.com/devops/how-to-ssh-into-a-docker-container/
+https://stackoverflow.com/questions/37160574/asked-password-when-ssh-to-container
 for some reason docker now works, before was stuck on starting engine. Perhaps installing docker on wsl made it work?
 Yep that was the reason. I had added wsl integration with both default and test distros. It tried to run the non default distro but it did not have docker correctly set up.
 happened again. What fixed it was wsl --shutdown while docker still starting or going to ubuntu and running docker there
@@ -53,3 +54,10 @@ if ssh error changed, delete C:\Users\Admin\.ssh\known_hosts
 #05/11
 seems when running docker through wsl, ssh without password does not work. Git bash might be bad cause /lib/modules cant be accessed
 running local docker on wsl seems to work
+do not forget to install kernel modules
+mptcp v0 is used by the code provided, while the kernel has mptcp v1. The latest supported version of mptcp v0 is 5.4
+
+trying microsoft 5.4 kernel
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=1d489151e9f9d1647110277ff77282fe4d96d09b #without this, fails
+
+Ok no more docker. The compiled kernel does not work on wsl. Moving on to VM

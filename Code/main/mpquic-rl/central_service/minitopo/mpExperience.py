@@ -128,6 +128,11 @@ class MpExperience:
 				val = self.mpTopo.notNSCommand(cmd)
 			else:
 				val = self.mpTopo.commandTo(who, cmd)
+			try:
+				val = val.decode("utf-8")
+			except (UnicodeDecodeError, AttributeError):
+				pass
+			#print("val=",val)
 			if val == "Error":
 				print("oooops can't get sysctl " + sysctlKey)
 			else:
