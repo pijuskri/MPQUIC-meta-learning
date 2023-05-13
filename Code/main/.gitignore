@@ -124,7 +124,8 @@ dmypy.json
 .pyre/
 
 # id_rsa.pub
-kvm-mpquic.vmdk
+#For vm images
+backups.rar
 *.vmdk
 *.vdi
 *.img
@@ -132,3 +133,7 @@ kvm-mpquic.vmdk
 #temporary
 /mininet
 /mininet.tar.gz
+
+#Video data
+sbd-videos/
+video/

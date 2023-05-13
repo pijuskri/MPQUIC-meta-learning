@@ -81,3 +81,14 @@ https://askubuntu.com/questions/30072/how-do-i-fix-a-problem-with-mergelist-or-s
 seems the /var/lib/dpkg/status was corrupted, replaced with .old version
 
 git clone https://github.com/thomaswpp/mpquic-sbd.git # have this on windows
+
+#05/13
+https://github.com/golang/go/issues/33530 #seems some requirement for quic-go was broken
+rebuilding seems to have fixed issue with https://sourceware.org/bugzilla/show_bug.cgi?id=22380
+copying .so file causes issues, do not copy/rebuild after
+Converting big buck bunny mp4 to mpeg format on VM
+
+sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:mc3man/trusty-media
+sudo apt update
+sudo apt install ffmpeg

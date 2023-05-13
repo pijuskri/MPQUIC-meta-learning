@@ -30,6 +30,14 @@ for wsl:
 dos2unix *.sh
 
 
+for sbd:
+sudo python network/mininet/build_mininet_router1.py -nm 2 -p 'basic'
+
+test sbd:
+./src/dash/caddy/caddy -quic -mp
+python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/output_dash.mpd -p 'basic' -q -mp
+
+
 #add 'C:\Program Files\Oracle\VirtualBox' to path
 #vboxmanage.exe clonehd "kvm-mpquic.vmdk" "kvm-mpquic.vdi" --format vdi
 #vboxmanage modifyhd "kvm-mpquic.vdi" --resize 30720

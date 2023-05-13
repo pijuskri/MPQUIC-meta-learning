@@ -190,7 +190,7 @@ def run():
     print "Dumping host connections"
     dumpNodeConnections( net.hosts )
     print "Testing network connectivity"
-    # net.pingAll()
+    #net.pingAll()
     print "Testing bandwidth between client and h4"
 
     info( '*** Routing Table on Router:\n' )
@@ -246,14 +246,14 @@ def run():
         file_mpd = '4k60fps.webm'
         #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
-    # print(cmd)
+    print(cmd)
     net[ 'client' ].cmd(cmd)
 
     end = datetime.now()
     print(divmod((end - start).total_seconds(), 60))
 
-
-    CLI( net )
+    #time.sleep(10)
+    #CLI( net )
     net.stop()
 
 if __name__ == '__main__':
