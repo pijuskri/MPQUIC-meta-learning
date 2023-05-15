@@ -9,14 +9,29 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/wire"
 )
 
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(200)
 
 type scheduler struct {
+	pathScheduler func(s *session) (bool, error)
 	// XXX Currently round-robin based, inspired from MPTCP scheduler
-	quotas map[protocol.PathID]uint
+	quotas        map[protocol.PathID]uint
+	zclient       *ZClient
+	lastScheduled time.Time
 }
 
 func (sch *scheduler) setup() {
 	sch.quotas = make(map[protocol.PathID]uint)
+	sch.scheduleToMultiplePaths()
+	sch.lastScheduled = time.Now()
+}
+
+//Pijus
+//Set up middleware connection
+func (sch *scheduler) scheduleToMultiplePaths() {
+	if sch.zclient == nil {
+		sch.zclient = NewClient()
+		sch.zclient.Connect("ipc:///tmp/zmq")
+	}
 }
 
 func (sch *scheduler) getRetransmission(s *session) (hasRetransmission bool, retransmitPacket *ackhandler.Packet, pth *path) {
@@ -205,11 +220,124 @@ pathLoop:
 	return selectedPath
 }
 
+func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
+
+	var avalPaths []*path
+
+	var pathStats []*PathStats // slice
+
+	// XXX Avoid using PathID 0 if there is more than 1 path
+	if len(s.paths) <= 1 {
+		if !hasRetransmission && !s.paths[protocol.InitialPathID].SendingAllowed() {
+			return nil
+		}
+		return s.paths[protocol.InitialPathID]
+	}
+
+	// filter unavailable paths
+pathLoop:
+	// This forloop seems like its returning to the start
+	// Not sure I understand the point, maybe we assume zero paths failure
+	for pathID, pth := range s.paths {
+
+		if !pth.SendingAllowed() {
+			utils.Infof("pth.SendingAllowed() == false")
+			continue pathLoop
+		}
+
+		// If this path is potentially failed, do not consider it for sending
+		if pth.potentiallyFailed.Get() {
+			utils.Infof("pth.potentiallyFailed == true")
+			continue pathLoop
+		}
+
+		// XXX Prevent using initial pathID if multiple paths
+		if pathID == protocol.InitialPathID {
+			continue pathLoop
+		}
+		avalPaths = append(avalPaths, pth)
+	}
+
+	if len(avalPaths) < 2 {
+		//utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
+		return nil
+	}
+
+	// Add statistics for each Path
+	for _, pth := range avalPaths {
+		var id uint8 = uint8(pth.pathID)
+		var bdw uint64 = 10 //uint64(pth.bdwStats.GetBandwidth()) //TODO support bandwidth
+		var smRTT float64 = pth.rttStats.SmoothedRTT().Seconds()
+		sntPkts, sntRetrans, sntLost := pth.sentPacketHandler.GetStatistics()
+
+		s := &PathStats{
+			PathID:          id,
+			Bandwidth:       bdw,
+			SmoothedRTT:     smRTT,
+			Packets:         sntPkts,
+			Retransmissions: sntRetrans,
+			Losses:          sntLost}
+
+		pathStats = append(pathStats, s)
+	}
+
+	// for _, stats := range pathStats {
+	// 	utils.Infof("Statistics: PathID: %d, Bandwidth %f SmoothedRtt: %d", stats.PathID, stats.Bandwidth, stats.SmoothedRTT)
+	// }
+
+	// Marios: Send & Receive Test -----------------------------------------------------------
+	start := time.Now()
+
+	request := &Request{
+		StreamID:    0,
+		RequestPath: "",
+		Path1:       pathStats[0],
+		Path2:       pathStats[1]}
+
+	// utils.Infof("Request %d %s %s", request.ID, request.Path1.PathID, request.Path2.PathID)
+
+	reqErr := sch.zclient.Request(request)
+	if reqErr != nil {
+		utils.Errorf("Error in Request\n")
+		utils.Errorf(reqErr.Error())
+	}
+
+	response, err := sch.zclient.Response()
+	if err != nil {
+		utils.Errorf("Error in Response\n")
+		utils.Errorf(err.Error())
+	}
+
+	elapsed := time.Since(start)
+	// utils.Infof("ZClient Response.ID: %d, Response.PathID: %d\n", response.ID, response.PathID)
+	utils.Infof("Communication overhead %s", elapsed)
+	//-----------------------------------------------------------------------------------------
+
+	// assign all volume to specified agent path
+	var selectedPathID protocol.PathID = protocol.PathID(response.PathID)
+	//selectedPaths[s.paths[selectedPathID]] = float64(stream.size)
+
+	return avalPaths[selectedPathID]
+}
+
+func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
+
+	elapsed := time.Since(sch.lastScheduled).Milliseconds()
+	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
+		sch.lastScheduled = time.Now()
+		output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
+		utils.Infof("RL output %u", output.pathID)
+	}
+
+	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+}
+
 // Lock of s.paths must be held
 func (sch *scheduler) selectPath(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
 	// XXX Currently round-robin
 	// TODO select the right scheduler dynamically
-	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	//return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	return sch.selectPathSmart(s, hasRetransmission, hasStreamRetransmission, fromPth)
 	// return sch.selectPathRoundRobin(s, hasRetransmission, hasStreamRetransmission, fromPth)
 }
 
@@ -221,7 +349,6 @@ func (sch *scheduler) performPacketSending(s *session, windowUpdateFrames []*wir
 	}
 
 	packet, err := s.packer.PackPacket(pth)
-	
 
 	if err != nil || packet == nil {
 		return nil, false, err

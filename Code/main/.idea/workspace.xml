@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="e4ec85da-a7e8-45ee-b1d0-2872db7a873b" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../exploratory-data-analysis/Exploratory Data Analysis.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../exploratory-data-analysis/Exploratory Data Analysis.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../exploratory-data-analysis/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../exploratory-data-analysis/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/com.txt" beforeDir="false" afterPath="$PROJECT_DIR$/com.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/network/mininet/build_mininet_router1.py" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/network/mininet/build_mininet_router1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/AStream/TEST" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/congestion/interface.go" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/congestion/interface.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/path.go" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/path.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/scheduler.go" beforeDir="false" afterPath="$PROJECT_DIR$/mpquic-sbd/src/quic-go/scheduler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notes.txt" beforeDir="false" afterPath="$PROJECT_DIR$/notes.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ssh_sync.sh" beforeDir="false" afterPath="$PROJECT_DIR$/ssh_sync.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tasks.txt" beforeDir="false" afterPath="$PROJECT_DIR$/tasks.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -12,6 +26,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2O1IobYJ2WBko3rLS4Ng8lPNqoW" />
   <component name="ProjectViewState">
@@ -24,6 +41,11 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowFactoryState": "false",
     "last_opened_file_path": "C:/Programming/MPQUIC-meta-learning/Code/main/mpquic-rl",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -36,7 +58,11 @@
       <option name="presentableId" value="Default" />
       <updated>1680721837666</updated>
       <workItem from="1680721839109" duration="38000" />
+      <workItem from="1684094953092" duration="10215000" />
     </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
 </project>

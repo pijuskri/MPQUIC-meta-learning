@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#this is python2 code!!!!!!
 import time
 import sys
 
@@ -187,18 +187,18 @@ def run():
     # default route for the selection process of normal internet-traffic
     net[ 'server' ].cmd("ip route add default scope global nexthop via 10.0.2.1 dev server-eth0")
 
-    print "Dumping host connections"
+    print( "Dumping host connections")
     dumpNodeConnections( net.hosts )
-    print "Testing network connectivity"
+    print( "Testing network connectivity")
     #net.pingAll()
-    print "Testing bandwidth between client and h4"
+    print( "Testing bandwidth between client and h4")
 
     info( '*** Routing Table on Router:\n' )
     # print net[ 'r1' ].cmd( 'route' )    
     
     #Run experiment
-    print net[ 'server' ].cmd("cd /home/" + USER + PATH_DIR)
-    print net[ 'server' ].cmd("pwd")
+    print( net[ 'server' ].cmd("cd /home/" + USER + PATH_DIR))
+    print( net[ 'server' ].cmd("pwd"))
     # print net[ 'server' ].cmd("./remove_files.sh")
 
     net[ 'client' ].cmd("cd /home/" + USER + PATH_DIR)
@@ -212,21 +212,21 @@ def run():
         net['server{0}'.format(i)].cmd("cd /home/" + USER + PATH_DIR) 
 
     # tcpdump -i server-eth1
-    if with_background == 1:
-
-        net['client1'].cmd("nice -n -10 ./background_sbd.py 'CLIENT' 10.0.5.2 9999 1 2 1 3000 &") 
-        net['client2'].cmd("nice -n -10 ./background_sbd.py 'CLIENT' 10.0.7.2 9980 2 2 1 3000 &") 
-
-        net['server1'].cmd("nice -n -10 python tcp_core.py 10.0.6.2 9999 10000 1 SERVER TCP teste.pcap 1 &") 
-        net['server2'].cmd("nice -n -10 python tcp_core.py 10.0.8.2 9999 10000 1 SERVER TCP teste.pcap 1 &") 
-        
-        time.sleep(8)
-
-        print net['server1'].cmd("nice -n -10 ./background_sbd.py 'SERVER' 10.0.5.2 9999 1 2 1 3000 &") 
-        print net['server2'].cmd("nice -n -10 ./background_sbd.py 'SERVER' 10.0.7.2 9980 2 2 1 3000 &") 
-
-        print net['client1'].cmd("nice -n -10 python tcp_core.py 10.0.6.2 9999 10000 1 CLIENT TCP testec.pcap 1 &") 
-        print net['client2'].cmd("nice -n -10 python tcp_core.py 10.0.8.2 9999 10000 1 CLIENT TCP testec.pcap 1 &") 
+    #if with_background == 1:
+#
+    #    net['client1'].cmd("nice -n -10 ./background_sbd.py 'CLIENT' 10.0.5.2 9999 1 2 1 3000 &")
+    #    net['client2'].cmd("nice -n -10 ./background_sbd.py 'CLIENT' 10.0.7.2 9980 2 2 1 3000 &")
+#
+    #    net['server1'].cmd("nice -n -10 python tcp_core.py 10.0.6.2 9999 10000 1 SERVER TCP teste.pcap 1 &")
+    #    net['server2'].cmd("nice -n -10 python tcp_core.py 10.0.8.2 9999 10000 1 SERVER TCP teste.pcap 1 &")
+    #
+    #    time.sleep(8)
+#
+    #    print net['server1'].cmd("nice -n -10 ./background_sbd.py 'SERVER' 10.0.5.2 9999 1 2 1 3000 &")
+    #    print net['server2'].cmd("nice -n -10 ./background_sbd.py 'SERVER' 10.0.7.2 9980 2 2 1 3000 &")
+#
+    #    print net['client1'].cmd("nice -n -10 python tcp_core.py 10.0.6.2 9999 10000 1 CLIENT TCP testec.pcap 1 &")
+    #    print net['client2'].cmd("nice -n -10 python tcp_core.py 10.0.8.2 9999 10000 1 CLIENT TCP testec.pcap 1 &")
     
 
         
@@ -252,7 +252,7 @@ def run():
     end = datetime.now()
     print(divmod((end - start).total_seconds(), 60))
 
-    #time.sleep(10)
+    time.sleep(15)
     #CLI( net )
     net.stop()
 
@@ -262,7 +262,7 @@ if __name__ == '__main__':
     parser.add_argument('--background', '-b',
                    metavar='background',
                    type=int,
-                   default=1,
+                   default=0,
                    help='execute with background or not')
 
     parser.add_argument('--number_client', '-nm',

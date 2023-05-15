@@ -24,12 +24,14 @@ type SendAlgorithm interface {
 
 	// Experiments
 	SetSlowStartLargeReduction(enabled bool)
+
+	BandwidthEstimate() Bandwidth
 }
 
 // SendAlgorithmWithDebugInfo adds some debug functions to SendAlgorithm
 type SendAlgorithmWithDebugInfo interface {
 	SendAlgorithm
-	BandwidthEstimate() Bandwidth
+	//BandwidthEstimate() Bandwidth
 
 	// Stuff only used in testing
 

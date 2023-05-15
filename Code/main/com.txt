@@ -14,11 +14,14 @@ install openSSH
 #pip3 install torch==1.13.1+cu117 torchvision>=0.13.1+cu117 torchaudio>=0.13.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117 --no-cache-dir
 
 vm setup:
+sudo apt-get install libzmq3-dev
 go get github.com/pebbe/zmq4
 go get github.com/headzoo/surf
 go get github.com/buger/jsonparser
+cd ~/go/src/github.com/mkanakis/middleware/
 go build /middleware
-move middleware to ~/go/bin/
+mv middleware/middleware ~/go/bin/middleware
+pip install pyzmq==18.1.0
 
 
 steps to run:

@@ -88,7 +88,16 @@ rebuilding seems to have fixed issue with https://sourceware.org/bugzilla/show_b
 copying .so file causes issues, do not copy/rebuild after
 Converting big buck bunny mp4 to mpeg format on VM
 
+https://www.powercms.in/article/how-install-ffmpeg-ubuntu-1404-1410-and-linux-mint
 sudo apt-get install software-properties-common
 sudo add-apt-repository ppa:mc3man/trusty-media
 sudo apt update
 sudo apt install ffmpeg
+
+#05/15
+researcher code still uses python2 in places, ill keep it at 2 for now but this is cursed
+move middleware to "~/go/src/github.com/mkanakis/middleware/", "sudo apt-get install libzmq3-dev", build to "~/go/bin/middleware"
+
+updating bandwidth of a path seems to been disabled by mpquic-rl, needs to be implemented
+bdw_stats.go: UpdateBDW() gets called in ReceivedAck()
+could try modify RTT stats instead of creating a new field as this requires a lot of propagation through the library code

@@ -3,13 +3,13 @@ package quic
 import (
 	"time"
 
-	"github.com/lucas-clemente/quic-go/sbd"
 	"github.com/lucas-clemente/quic-go/ackhandler"
 	"github.com/lucas-clemente/quic-go/congestion"
-	"github.com/lucas-clemente/quic-go/qerr"
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/lucas-clemente/quic-go/internal/wire"
+	"github.com/lucas-clemente/quic-go/qerr"
+	"github.com/lucas-clemente/quic-go/sbd"
 )
 
 const (
@@ -24,6 +24,7 @@ type path struct {
 	sess   *session
 
 	rttStats *congestion.RTTStats
+	//bdwStats *congestion.BDWStats //SHI
 
 	sentPacketHandler     ackhandler.SentPacketHandler
 	receivedPacketHandler ackhandler.ReceivedPacketHandler
@@ -34,15 +35,15 @@ type path struct {
 
 	potentiallyFailed utils.AtomicBool
 
-	sentPacket          chan struct{}
+	sentPacket chan struct{}
 
 	//Used to calculate the statistics about path
 	pstats *sbd.PathStats
-	group uint8 
-	epoch uint16
-	
-	lastSentLossCount uint64	
-	
+	group  uint8
+	epoch  uint16
+
+	lastSentLossCount uint64
+
 	// It is now the responsibility of the path to keep its packet number
 	packetNumberGenerator *packetNumberGenerator
 
@@ -55,7 +56,7 @@ type path struct {
 
 	lastNetworkActivityTime time.Time
 
-	timer           *utils.Timer
+	timer *utils.Timer
 }
 
 // setup initializes values that are independent of the perspective
@@ -72,6 +73,7 @@ func (p *path) setup(oliaSenders map[protocol.PathID]*congestion.OliaSender) {
 		oliaSenders[p.pathID] = cong.(*congestion.OliaSender)
 	}
 
+	//cong.BandwidthEstimate()
 	sentPacketHandler := ackhandler.NewSentPacketHandler(p.rttStats, cong, p.onRTO)
 
 	now := time.Now()

@@ -115,6 +115,8 @@ venv.bak/
 # mkdocs documentation
 /site
 
+.idea
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -133,6 +135,7 @@ backups.rar
 #temporary
 /mininet
 /mininet.tar.gz
+/vm-user-dir-mininet
 
 #Video data
 sbd-videos/
