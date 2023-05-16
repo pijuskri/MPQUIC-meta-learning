@@ -82,6 +82,7 @@ def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
                 logger.debug("Time to execute one run: {}s".format(diff))
 
                 end_of_run.set()  # set the end of run so our agent knows
+                stop_env.set() #run only once for now
                 # env.spawn_middleware() # restart middleware
             except Exception as ex:
                 logger.error(ex)
@@ -142,6 +143,7 @@ class NetworkEnv(gym.Env):
         self.end_of_run = mp.Event()
         env = mp.Process(target=environment, args=(self.bdw_paths, self.stop_env, self.end_of_run))
         env.start()
+        time.sleep(10)
 
         # keep record of threads and processes
         self.tp_list = [self.rhandler, self.collector, env]
@@ -219,13 +221,13 @@ class NetworkEnv(gym.Env):
         aggr_loss = s.normalized_loss_path0 + s.normalized_loss_path1
 
         completed_factor = 0
-        if completed:
-            stream_info = []
-            with self.cqueue.mutex:
-                for elem in list(self.cqueue.queue):
-                    #stream_info.append(elem)
-                    completed_factor += elem['CompletionTime']
-            #stream_info['CompletionTime']
+        #if completed:
+        #    stream_info = []
+        #    with self.cqueue.mutex:
+        #        for elem in list(self.cqueue.queue):
+        #            #stream_info.append(elem)
+        #            completed_factor += elem['CompletionTime']
+        #    #stream_info['CompletionTime']
 
         reward = (action_vec[0] * s.normalized_bwd_path0 + action_vec[1] * s.normalized_bwd_path1) - completed_factor - (0.8 * aggr_srtt) - (1.0 * aggr_loss)
         return reward

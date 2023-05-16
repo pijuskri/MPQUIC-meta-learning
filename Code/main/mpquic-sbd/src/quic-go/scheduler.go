@@ -1,6 +1,8 @@
 package quic
 
 import (
+	"log"
+	"os"
 	"time"
 
 	"github.com/lucas-clemente/quic-go/ackhandler"
@@ -9,7 +11,8 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/wire"
 )
 
-var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(200)
+//var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000)
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(2 * float64(time.Second)).Milliseconds()
 
 type scheduler struct {
 	pathScheduler func(s *session) (bool, error)
@@ -19,10 +22,29 @@ type scheduler struct {
 	lastScheduled time.Time
 }
 
+func openLogFile(path string) (*os.File, error) {
+	logFile, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return logFile, nil
+}
+
 func (sch *scheduler) setup() {
 	sch.quotas = make(map[protocol.PathID]uint)
 	sch.scheduleToMultiplePaths()
 	sch.lastScheduled = time.Now()
+	utils.Infof("scheduler started")
+
+	file, err := openLogFile("./scheduler.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetOutput(file)
+	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds)
+
+	log.Println("log file created")
+	log.Printf("SMART_SCHEDULER_UPDATE_INTERVAL: %d\n", SMART_SCHEDULER_UPDATE_INTERVAL)
 }
 
 //Pijus
@@ -311,6 +333,7 @@ pathLoop:
 	elapsed := time.Since(start)
 	// utils.Infof("ZClient Response.ID: %d, Response.PathID: %d\n", response.ID, response.PathID)
 	utils.Infof("Communication overhead %s", elapsed)
+	log.Printf("Communication overhead %s\n", elapsed)
 	//-----------------------------------------------------------------------------------------
 
 	// assign all volume to specified agent path
@@ -323,9 +346,11 @@ pathLoop:
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
 
 	elapsed := time.Since(sch.lastScheduled).Milliseconds()
+	//log.Printf("time diff %d : %d\n", elapsed, SMART_SCHEDULER_UPDATE_INTERVAL)
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
 		sch.lastScheduled = time.Now()
 		output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
+		log.Printf("RL output %d", output.pathID)
 		utils.Infof("RL output %u", output.pathID)
 	}
 

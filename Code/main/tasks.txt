@@ -11,11 +11,12 @@ core py minitopo: fix the python 3 issue
 #idea for env: return reward at the end step only, step includes sending and waiting for a request.
 idea for model: separate observation(network condition) sending with request. Send network params every 50ms
 
-connect scheduler to middleware
+-connect scheduler to middleware
 make client provide QOE features to scheduler
 	modify AStream to make a zeromq publisher
 make infrastrucre to run experiment from agent
 
+use trace data
 make scheduler choose a path every 50ms
 modify model to use actions (minrtt, own judgements like chunk manager paper)
 make sure models use propabilistic action picking and not argmax

@@ -252,7 +252,7 @@ def run():
     end = datetime.now()
     print(divmod((end - start).total_seconds(), 60))
 
-    time.sleep(15)
+    time.sleep(30)
     #CLI( net )
     net.stop()
 

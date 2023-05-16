@@ -231,7 +231,25 @@ class Environment:
         message = "Run Number: {}, Graph: {}" 
         self._logger.info(message.format(self._totalRuns, self.curr_graph))
 
-        launchTests(self.curr_topo, self.curr_graph)
+
+        self.test_sbd_run()
+    def test_sbd_run(self):
+        #launchTests(self.curr_topo, self.curr_graph)
+        #cmd = ["ssh", "-p", self._remotePort, self._remoteHostname,
+        #       "\"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'basic' >> ~/Workspace/mpquic-sbd/test_log.txt\""]
+        cmd = self.ssh("sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'basic' 2>&1 | tee ~/Workspace/mpquic-sbd/test_log.txt") #
+        print(cmd)
+        f = open("sbd_log.txt", "a")
+        child = PopenSpawn(cmd, timeout=120, logfile=f)
+        print('launched sbd test')
+        child.expect("*** Creating network")
+        #time.sleep(10)
+        child.wait()
+        print('sbd run over')
+        #the_old_way = subprocess.Popen(cmd,
+        #                               stdout=subprocess.PIPE).communicate()[0].rstrip()
+        f.close()
+
 
     def close(self):
         self.stop_middleware()

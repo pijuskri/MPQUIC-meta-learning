@@ -1,7 +1,6 @@
 #!/bin/bash
 User="mininet"
-Host="localhost"
-SendDir="~/go/src/github.com/mkanakis/middleware/"
+Host="172.23.160.1"
 Port="2222"
 
-ssh -p $Port $User@$Host "$1"
+ssh -p $Port $User@$Host "source /etc/profile; $1"

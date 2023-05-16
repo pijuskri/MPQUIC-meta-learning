@@ -278,7 +278,7 @@ def main():
 
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(6):
+        for episode in range(1):
             state = env.reset()
             print("Episode ", episode)
             for step in range(max_steps):
