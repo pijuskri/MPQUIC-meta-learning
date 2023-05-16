@@ -101,3 +101,8 @@ move middleware to "~/go/src/github.com/mkanakis/middleware/", "sudo apt-get ins
 updating bandwidth of a path seems to been disabled by mpquic-rl, needs to be implemented
 bdw_stats.go: UpdateBDW() gets called in ReceivedAck()
 could try modify RTT stats instead of creating a new field as this requires a lot of propagation through the library code
+
+#05/16
+https://devblogs.microsoft.com/commandline/sharing-ssh-keys-between-windows-and-wsl-2/ #setup wsl no pass, does not work for rsync
+
+https://github.com/golang/go/issues/29132 tried to speed up go build, seems -buildmode=c-shared building tries to install in root

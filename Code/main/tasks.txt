@@ -17,6 +17,8 @@ make client provide QOE features to scheduler
 make infrastrucre to run experiment from agent
 
 use trace data
+get a longer video for dash to play
 make scheduler choose a path every 50ms
+	use non blocking connection to model
 modify model to use actions (minrtt, own judgements like chunk manager paper)
 make sure models use propabilistic action picking and not argmax

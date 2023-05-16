@@ -46,7 +46,8 @@ class Collector(BasicThread):
                         data = self._subscriber.recv_multipart(zmq.NOBLOCK)
                     except Exception as ex:
                         self.pdebug(ex)
-
+                        continue
+                    print(data)
                     json_data = json.loads(data[1])
                     self.pinfo(json_data)
 
