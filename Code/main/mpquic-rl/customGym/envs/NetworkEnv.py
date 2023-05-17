@@ -56,6 +56,7 @@ def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
         'publisher': 'tcp://*:5556',
         'subscriber': 'ipc:///tmp/pubsub'
     }
+    #'ipc:///tmp/pubsub'
     logger = config_logger('environment', filepath='../../central_service/logs/environment.log')
     env = Environment(bdw_paths, logger=logger, mconfig=config, remoteHostname=rhostname)
 

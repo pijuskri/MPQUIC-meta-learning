@@ -13,7 +13,7 @@ class Collector(BasicThread):
         Pass on the requests to the CentralTrainer
         Obtain a response (scheduling-related) and send it back
     '''
-    def __init__(self, threadID: int, threadName: str, queue: queue.Queue, host:str="localhost", port:str="5555"):
+    def __init__(self, threadID: int, threadName: str, queue: queue.Queue, host:str="localhost", port:str="5556"):
         super().__init__(threadID, threadName, queue)
 
         # Stream times
@@ -36,14 +36,14 @@ class Collector(BasicThread):
 
     def run(self):
         self.pinfo("Run Collector Thread")
-        
         while not self._stoprequest.isSet():
             try:
                 # Poll for a reply => time is ms
                 if (self.__poller.poll(timeout=10)):
                     # Receive request from middleware
                     try:
-                        data = self._subscriber.recv_multipart(zmq.NOBLOCK)
+                        #data = self._subscriber.recv_multipart(zmq.NOBLOCK)
+                        data = self._subscriber.recv(zmq.NOBLOCK)
                     except Exception as ex:
                         self.pdebug(ex)
                         continue

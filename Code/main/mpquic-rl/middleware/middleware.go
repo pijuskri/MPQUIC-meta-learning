@@ -75,12 +75,13 @@ func subscribeAndForward(pubAddrs *string, subAddrs *string, wg *sync.WaitGroup)
 			fmt.Println(err.Error())
 			break
 		}
-
+        fmt.Println("message received")
 		err = publisher.Send(message)
 		if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
+		fmt.Println("message sent")
 	}
 }
 

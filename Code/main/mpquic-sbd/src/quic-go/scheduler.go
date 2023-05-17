@@ -13,6 +13,7 @@ import (
 
 //var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000)
 var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(2 * float64(time.Second)).Milliseconds()
+var publisher *ZPublisher
 
 type scheduler struct {
 	pathScheduler func(s *session) (bool, error)
@@ -54,6 +55,9 @@ func (sch *scheduler) scheduleToMultiplePaths() {
 		sch.zclient = NewClient()
 		sch.zclient.Connect("ipc:///tmp/zmq")
 	}
+	publisher = NewPublisher()
+	publisher.Connect("ipc:///tmp/pubsub")
+	//defer publisher.Close()
 }
 
 func (sch *scheduler) getRetransmission(s *session) (hasRetransmission bool, retransmitPacket *ackhandler.Packet, pth *path) {
@@ -333,6 +337,13 @@ pathLoop:
 	}
 
 	//_ = response
+
+	streamInfo := &StreamInfo{
+		StreamID:       0,
+		ObjectID:       "",
+		CompletionTime: 0,
+		Path:           ""}
+	publisher.Publish(streamInfo)
 
 	elapsed := time.Since(start)
 	// utils.Infof("ZClient Response.ID: %d, Response.PathID: %d\n", response.ID, response.PathID)

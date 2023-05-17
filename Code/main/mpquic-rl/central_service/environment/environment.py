@@ -230,7 +230,7 @@ class Environment:
         self._totalRuns += 1
         message = "Run Number: {}, Graph: {}" 
         self._logger.info(message.format(self._totalRuns, self.curr_graph))
-
+        #time.sleep(10)
         print('sbd called')
         self.test_sbd_run()
     def test_sbd_run(self):
