@@ -124,7 +124,8 @@ class NetworkEnv(gym.Env):
         self.rhandler.start()
 
         # Spawn collector thread
-        self.cqueue = queue.Queue(0)
+
+        self.cqueue: mp.Queue[dict] = queue.Queue(0)
         self.collector = Collector(2, "collector-thread", queue=self.cqueue, host=SSH_HOST, port='5556')
         self.collector.start()
 
@@ -203,7 +204,7 @@ class NetworkEnv(gym.Env):
         #}
         return {}
 
-    def reward(self, action, completed):
+    def reward_old(self, action, completed):
         action_vec = np.zeros(A_DIM)
         action_vec[action] = 1
 
@@ -222,6 +223,33 @@ class NetworkEnv(gym.Env):
 
         reward = (action_vec[0] * s.normalized_bwd_path0 + action_vec[1] * s.normalized_bwd_path1) - completed_factor - (0.8 * aggr_srtt) - (1.0 * aggr_loss)
         return reward
+
+    def reward(self, action, completed):
+        # {
+        #    "bitrate": current_bitrate,
+        #    "down_shifts": config_dash.JSON_HANDLE['playback_info']['down_shifts'],
+        #    "buffering_ratio": buffering_ratio,
+        #    "initial_buffering": config_dash.JSON_HANDLE['playback_info']['initial_buffering_duration'],
+        # }
+
+        res = None
+        #with self.cqueue.mutex:
+        #    try:
+        #        res = self.cqueue.get(block=False, timeout=0)
+        #    except queue.Empty:
+        #        pass
+
+        #with self.cqueue.mutex:
+        #    if not self.cqueue.empty():
+        #        res = list(self.cqueue.queue)[-1]
+        if res is None:
+            return 0
+
+        bitrate = res['bitrate']/ 1048576 #MB
+        down_shifts = res["down_shifts"]
+        buffering_ratio = res["buffering_ratio"]
+        initial_buffering = res["initial_buffering"]
+        return bitrate - down_shifts - buffering_ratio - initial_buffering
 
 # %%
 # Oftentimes, info will also contain some data that is only available
@@ -255,6 +283,7 @@ class NetworkEnv(gym.Env):
     def reset(self, seed=None, options=None, return_info=False):
         # We need the following line to seed self.np_random
         print("reset")
+
         super().reset(seed=seed)
 
 

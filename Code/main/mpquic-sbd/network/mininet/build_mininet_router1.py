@@ -11,6 +11,7 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.util import dumpNodeConnections
 from datetime import datetime
+#import subprocess
 
 import argparse
 
@@ -25,18 +26,14 @@ PATH_DIR = "/Workspace/mpquic-sbd/"
 USER='mininet'
 
 
-TC_QDISC_RATE = 20
-TC_QDISC_LATENCY = 20
+TC_QDISC_RATE = 2 #Mbit
+TC_QDISC_LATENCY = 20 #ms
 TC_QDISC_BURST = 2560
 NICE = 'nice -n -10'
 CLIENT = 'CLIENT'
 SERVER = 'SERVER'
 TIMEOUT = 35
 TCP_CORE_MB = 100000
-
-
-TC_QDISC_RATE = 20
-TC_QDISC_LATENCY = 20
 
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
@@ -101,6 +98,8 @@ class NetworkTopo( Topo ):
 def run():
     "Test linux router"
     topo = NetworkTopo()
+
+    #subprocess.run("kill $(lsof - t - i:6633)")
     net = Mininet( topo=topo)  # controller is used by s1-s3
     net.start()
 

@@ -3,6 +3,7 @@ package quic
 import (
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/lucas-clemente/quic-go/ackhandler"
@@ -17,11 +18,14 @@ var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(2 * float64(time.Second)).Mi
 //var publisher *ZPublisher
 
 type scheduler struct {
+	mu            sync.Mutex
 	pathScheduler func(s *session) (bool, error)
 	// XXX Currently round-robin based, inspired from MPTCP scheduler
-	quotas        map[protocol.PathID]uint
-	zclient       *ZClient
-	lastScheduled time.Time
+	quotas         map[protocol.PathID]uint
+	zclient        *ZClient
+	lastScheduled  time.Time
+	rlAction       chan int
+	rlactionActive int
 }
 
 func openLogFile(path string) (*os.File, error) {
@@ -36,6 +40,11 @@ func (sch *scheduler) setup() {
 	sch.quotas = make(map[protocol.PathID]uint)
 	sch.scheduleToMultiplePaths()
 	sch.lastScheduled = time.Now()
+	sch.rlAction = make(chan int, 50)
+	go func() {
+		sch.rlAction <- 0
+	}()
+
 	utils.Infof("scheduler started")
 
 	file, err := openLogFile("./scheduler.log")
@@ -253,6 +262,7 @@ func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStrea
 
 	var pathStats []*PathStats // slice
 
+	//s.pathsLock.Lock()
 	// XXX Avoid using PathID 0 if there is more than 1 path
 	if len(s.paths) <= 1 {
 		if !hasRetransmission && !s.paths[protocol.InitialPathID].SendingAllowed() {
@@ -289,6 +299,7 @@ pathLoop:
 		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
 		return nil
 	}
+	//s.pathsLock.Unlock()
 
 	// Add statistics for each Path
 	for _, pth := range avalPaths {
@@ -362,7 +373,7 @@ pathLoop:
 		}
 	*/
 	var selectedPath = s.paths[selectedPathID]
-
+	sch.rlAction <- int(response.PathID)
 	//selectedPaths[s.paths[selectedPathID]] = float64(stream.size)
 
 	return selectedPath
@@ -371,14 +382,27 @@ pathLoop:
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
 
 	elapsed := time.Since(sch.lastScheduled).Milliseconds()
+	select {
+	case msg := <-sch.rlAction:
+		sch.rlactionActive = msg
+		log.Printf("RL action received")
+		log.Printf("RL output %d", msg)
+	default:
+		//log.Printf("no Rl action")
+		//fmt.Println("no message sent")
+	}
 	//log.Printf("time diff %d : %d\n", elapsed, SMART_SCHEDULER_UPDATE_INTERVAL)
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
 		sch.lastScheduled = time.Now()
-		output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
-		if output != nil {
-			log.Printf("RL output %d", output.pathID)
-			utils.Infof("RL output %u", output.pathID)
-		}
+		go sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
+
+		/*
+			output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
+			if output != nil {
+				log.Printf("RL output %d", output.pathID)
+				utils.Infof("RL output %u", output.pathID)
+			}
+		*/
 	}
 
 	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
