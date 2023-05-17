@@ -204,7 +204,7 @@ def run():
     net[ 'client' ].cmd("cd /home/" + USER + PATH_DIR)
     # print net[ 'client' ].cmd("./remove_files.sh")
 
-    net[ 'server' ].cmd("nice -n -10 src/dash/caddy/caddy -conf /home/" + USER + "/Caddyfile -quic -mp >> out &")
+    net[ 'server' ].cmd("nice -n -10 src/dash/caddy/caddy -conf /home/" + USER + "/Caddyfile -quic -mp &>> out &")
 
 
     for i in range(1,3):
@@ -240,9 +240,9 @@ def run():
     print(file_out)
 
     if download:
-        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp >> {2} &".format(file_mpd, playback, file_out)
+        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
     else: 
-        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2}".format(file_mpd, playback, file_out)
+        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
         file_mpd = '4k60fps.webm'
         #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 

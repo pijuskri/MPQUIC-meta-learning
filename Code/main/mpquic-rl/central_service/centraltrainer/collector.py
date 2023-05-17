@@ -47,8 +47,9 @@ class Collector(BasicThread):
                     except Exception as ex:
                         self.pdebug(ex)
                         continue
-                    print(data)
+
                     json_data = json.loads(data[1])
+                    print(json_data)
                     self.pinfo(json_data)
 
                     self._all_streams.append(json_data)

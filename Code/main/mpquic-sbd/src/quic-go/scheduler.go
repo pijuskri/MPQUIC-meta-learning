@@ -281,7 +281,7 @@ pathLoop:
 	}
 
 	if len(avalPaths) < 2 {
-		//utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
+		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
 		return nil
 	}
 
@@ -317,6 +317,7 @@ pathLoop:
 		Path2:       pathStats[1]}
 
 	// utils.Infof("Request %d %s %s", request.ID, request.Path1.PathID, request.Path2.PathID)
+	log.Printf("Scheduler request sending to model")
 
 	reqErr := sch.zclient.Request(request)
 	if reqErr != nil {
@@ -324,11 +325,14 @@ pathLoop:
 		utils.Errorf(reqErr.Error())
 	}
 
+	log.Printf("Listening for model response")
 	response, err := sch.zclient.Response()
 	if err != nil {
 		utils.Errorf("Error in Response\n")
 		utils.Errorf(err.Error())
 	}
+
+	//_ = response
 
 	elapsed := time.Since(start)
 	// utils.Infof("ZClient Response.ID: %d, Response.PathID: %d\n", response.ID, response.PathID)
@@ -338,9 +342,18 @@ pathLoop:
 
 	// assign all volume to specified agent path
 	var selectedPathID protocol.PathID = protocol.PathID(response.PathID)
+	/*
+		var selectedPath = avalPaths[0]
+		if response.PathID < uint8(len(avalPaths)) {
+			selectedPath = avalPaths[selectedPathID]
+			utils.Infof("Received invalid path id: %u", response.PathID)
+		}
+	*/
+	var selectedPath = s.paths[selectedPathID]
+
 	//selectedPaths[s.paths[selectedPathID]] = float64(stream.size)
 
-	return avalPaths[selectedPathID]
+	return selectedPath
 }
 
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
@@ -350,8 +363,10 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
 		sch.lastScheduled = time.Now()
 		output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
-		log.Printf("RL output %d", output.pathID)
-		utils.Infof("RL output %u", output.pathID)
+		if output != nil {
+			log.Printf("RL output %d", output.pathID)
+			utils.Infof("RL output %u", output.pathID)
+		}
 	}
 
 	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
@@ -360,7 +375,7 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 // Lock of s.paths must be held
 func (sch *scheduler) selectPath(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
 	// XXX Currently round-robin
-	// TODO select the right scheduler dynamically
+	//_todo select the right scheduler dynamically
 	//return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
 	return sch.selectPathSmart(s, hasRetransmission, hasStreamRetransmission, fromPth)
 	// return sch.selectPathRoundRobin(s, hasRetransmission, hasStreamRetransmission, fromPth)
