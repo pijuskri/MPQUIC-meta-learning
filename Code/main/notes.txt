@@ -106,3 +106,6 @@ could try modify RTT stats instead of creating a new field as this requires a lo
 https://devblogs.microsoft.com/commandline/sharing-ssh-keys-between-windows-and-wsl-2/ #setup wsl no pass, does not work for rsync
 
 https://github.com/golang/go/issues/29132 tried to speed up go build, seems -buildmode=c-shared building tries to install in root
+
+#05/17
+for some reason you need to connect instead of bind using a publisher in dash

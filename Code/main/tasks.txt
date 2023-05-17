@@ -13,7 +13,7 @@ idea for model: separate observation(network condition) sending with request. Se
 
 -connect scheduler to middleware
 make client provide QOE features to scheduler
-	modify AStream to make a zeromq publisher
+	-modify AStream to make a zeromq publisher
 -make infrastrucre to run experiment from agent
 
 use trace data

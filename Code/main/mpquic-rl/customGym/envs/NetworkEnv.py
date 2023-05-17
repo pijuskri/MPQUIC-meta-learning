@@ -107,16 +107,6 @@ class NetworkEnv(gym.Env):
 
     def __init__(self):
 
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
-        #self.observation_space = spaces.Tuple((
-        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
-        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #band
-        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
-        #    spaces.Box(0, 100, shape=(1,), dtype=np.float32), #RTT
-        #    spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
-        #    spaces.Box(0, 30, shape=(1,), dtype=np.float32), #Loss
-        #))
         self.observation_space = spaces.Box(0, 100, shape=(6,), dtype=np.float64)
 
         self.action_space = spaces.Discrete(A_DIM)
