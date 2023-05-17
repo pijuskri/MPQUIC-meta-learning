@@ -42,8 +42,8 @@ class Collector(BasicThread):
                 if (self.__poller.poll(timeout=10)):
                     # Receive request from middleware
                     try:
-                        #data = self._subscriber.recv_multipart(zmq.NOBLOCK)
-                        data = self._subscriber.recv(zmq.NOBLOCK)
+                        data = self._subscriber.recv_multipart(zmq.NOBLOCK)
+                        #data = self._subscriber.recv(zmq.NOBLOCK)
                     except Exception as ex:
                         self.pdebug(ex)
                         continue
