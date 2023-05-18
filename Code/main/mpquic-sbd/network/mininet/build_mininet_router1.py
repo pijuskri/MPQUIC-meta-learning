@@ -204,11 +204,11 @@ def run():
     # print net[ 'client' ].cmd("./remove_files.sh")
 
     net[ 'server' ].cmd("nice -n -10 src/dash/caddy/caddy -conf /home/" + USER + "/Caddyfile -quic -mp &>> out &")
+    server_pid = int(net['server'].cmd('echo $!'))
 
-
-    for i in range(1,3):
-        net['client{0}'.format(i)].cmd("cd /home/" + USER + PATH_DIR) 
-        net['server{0}'.format(i)].cmd("cd /home/" + USER + PATH_DIR) 
+    #for i in range(1,3):
+    #    net['client{0}'.format(i)].cmd("cd /home/" + USER + PATH_DIR)
+    #    net['server{0}'.format(i)].cmd("cd /home/" + USER + PATH_DIR)
 
     # tcpdump -i server-eth1
     #if with_background == 1:
@@ -229,30 +229,35 @@ def run():
     
 
         
-    time.sleep(10)
+    time.sleep(5)
     file_mpd = 'output_dash.mpd'
     if playback == 'sara':
         file_mpd = 'output_dash2.mpd'
         
     start = datetime.now()
     file_out = 'data/out_{0}_{1}.txt'.format(playback, start.strftime("%Y-%m-%d.%H:%M:%S"))
-    print(file_out)
+    #print(file_out)
 
-    if download:
-        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
-    else: 
-        cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
-        file_mpd = '4k60fps.webm'
-        #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
+    for i in range(n_times):
+        if download:
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
+        else:
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            #file_mpd = '4k60fps.webm'
+            #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
-    print(cmd)
-    net[ 'client' ].cmd(cmd)
+        print(cmd)
+        net[ 'client' ].cmd(cmd)
+
+    net['server'].cmd("kill -9 {0}".format(server_pid))
+    print('Finishing experiment')
 
     end = datetime.now()
     print(divmod((end - start).total_seconds(), 60))
 
-    time.sleep(30)
+    #time.sleep(30)
     #CLI( net )
+
     net.stop()
 
 if __name__ == '__main__':
@@ -282,6 +287,12 @@ if __name__ == '__main__':
                    default='basic',
                    help="Playback type (basic, sara, netflix, or all)")
 
+    parser.add_argument('--times', '-t',
+                        metavar='times',
+                        type=str,
+                        default=3,
+                        help="Number of types to restart dash server")
+
 
     # Execute the parse_args() method
     args                       = parser.parse_args()
@@ -289,6 +300,7 @@ if __name__ == '__main__':
     number_of_interface_client = args.number_client
     download                   = args.download
     playback                   = args.playback
+    n_times = args.times
 
     # if len(sys.argv) > 1:
     #     with_background = int(sys.argv[1])

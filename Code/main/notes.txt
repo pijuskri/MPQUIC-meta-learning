@@ -109,3 +109,5 @@ https://github.com/golang/go/issues/29132 tried to speed up go build, seems -bui
 
 #05/17
 for some reason you need to connect instead of bind using a publisher in dash
+https://medium.com/@josueparra2892/golang-channels-8b22570cbfca
+https://gobyexample.com/non-blocking-channel-operations

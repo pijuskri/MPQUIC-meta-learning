@@ -21,6 +21,7 @@ get a longer video for dash to play
 -make scheduler choose a path every 50ms
 	-use non blocking connection to model
 modify model to use actions (minrtt, own judgements like chunk manager paper)
+	make a propabilistic scheduler
 make sure models use propabilistic action picking and not argmax
 
 maybe try go install quic instead of build?
