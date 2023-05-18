@@ -139,4 +139,6 @@ backups.rar
 
 #Video data
 sbd-videos/
-video/
+conv_video/
+video_old/
+*.mp4
