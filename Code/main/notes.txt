@@ -114,3 +114,5 @@ https://gobyexample.com/non-blocking-channel-operations
 
 #05/18
 https://github.com/gpac/gpac
+converting my own video is causing issues cause mp4box outputs a specific (and more modern) mpd file, 
+while astream does not support it. Time to change astream code...

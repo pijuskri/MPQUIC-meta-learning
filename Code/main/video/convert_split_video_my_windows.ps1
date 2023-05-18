@@ -21,7 +21,7 @@ cd conv_video
 # the number 4000 and 4 have to change to the value for the second per desired segment.
 # For example, if you want segments with 1 second video, you need to put 1000 and 1
 MP4Box -dash 4000 `
--segment-name "segment_`$RepresentationID`$_" `
+-segment-name 'segment_$RepresentationID$_' `
 -mpd-refresh 4 `
 -fps 25 video_240_25fps.mp4`#video:id=240p `
 -fps 25 video_360_25fps.mp4`#video:id=360p `
@@ -36,7 +36,7 @@ MP4Box -dash 4000 `
 #-fps 60 video_1440_60fps.mp4#video:id=14402p \
 #-fps 30 video_2160_30fps.mp4#video:id=2560p \
 #-fps 60 video_2160_60fps.mp4#video:id=25602p \
-#
+#-rap `
 cd ..
 #Ps: For the SARA algorithm, use the python code "modify_mpd" to convert the mpd representative to be compatible with SARA
 
