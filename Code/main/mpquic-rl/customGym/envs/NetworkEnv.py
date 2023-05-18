@@ -145,6 +145,7 @@ class NetworkEnv(gym.Env):
 
         #THESE SHOULD BE RESET EACH EPISODE
         self.request = None
+        self.previous_reward = None
 
     def get_net_state(self) -> NetworkState:
         path1_smoothed_RTT, path1_bandwidth, path1_packets, \
@@ -234,22 +235,26 @@ class NetworkEnv(gym.Env):
 
         res = None
         #with self.cqueue.mutex:
-        #    try:
-        #        res = self.cqueue.get(block=False, timeout=0)
-        #    except queue.Empty:
-        #        pass
+        try:
+            res = self.cqueue.get(block=False, timeout=0.0001)
+        except queue.Empty:
+            pass
 
         #with self.cqueue.mutex:
         #    if not self.cqueue.empty():
         #        res = list(self.cqueue.queue)[-1]
         if res is None:
+            if self.previous_reward is not None:
+                return self.previous_reward
             return 0
 
         bitrate = res['bitrate']/ 1048576 #MB
         down_shifts = res["down_shifts"]
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
-        return bitrate - down_shifts - buffering_ratio - initial_buffering
+        reward = bitrate - down_shifts - buffering_ratio - initial_buffering
+        self.previous_reward = reward
+        return reward
 
 # %%
 # Oftentimes, info will also contain some data that is only available

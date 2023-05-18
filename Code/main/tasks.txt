@@ -14,10 +14,11 @@ idea for model: separate observation(network condition) sending with request. Se
 -connect scheduler to middleware
 -make client provide QOE features to scheduler
 	-modify AStream to make a zeromq publisher
+	downshifts should maybe consider how much lower the bitrate is 
 -make infrastrucre to run experiment from agent
 
 use trace data
-get a longer video for dash to play
+-get a longer video for dash to play
 -make scheduler choose a path every 50ms
 	-use non blocking connection to model
 modify model to use actions (minrtt, own judgements like chunk manager paper)

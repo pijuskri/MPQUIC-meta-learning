@@ -339,7 +339,7 @@ def main():
                delimiter=", ",
                fmt='% s')
     plt.plot(moving_average(replay_memory.rewards, 5))
-    #plt.show()
+    plt.show()
     env.close()
 
 #def moving_average(a, n=3):
