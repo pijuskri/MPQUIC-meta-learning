@@ -17,11 +17,12 @@ from customGym.envs.NetworkEnv import NetworkEnv
 #from customGym.envs.NetworkEnv import NetworkState
 from typing import NamedTuple
 
-S_INFO = 6
-A_DIM = 2
+from central_service.variables import A_DIM, S_INFO
+
 # hyperparameters
 hidden_size = 256
 learning_rate = 3e-4
+apply_loss_steps = 10
 
 # Constants
 GAMMA = 0.99
@@ -254,8 +255,8 @@ def main():
 
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 100
-    apply_loss_steps = 6
+    max_steps = 1000
+
 
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
     print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
@@ -338,7 +339,7 @@ def main():
                np.array(replay_memory.rewards),
                delimiter=", ",
                fmt='% s')
-    plt.plot(moving_average(replay_memory.rewards, 5))
+    plt.plot(moving_average(replay_memory.rewards, 10))
     plt.show()
     env.close()
 
@@ -353,13 +354,13 @@ def main():
 #    return scipy.ndimage.gaussian_filter1d(x, (np.std(x) * w * 5)/(len(x)))
 def moving_average(x, w):
     m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
-    return scipy.ndimage.gaussian_filter1d(m, (np.std(x) * w * 5)/(len(x)))
+    return scipy.ndimage.gaussian_filter1d(m, (np.std(x) * w * 25)/(len(x)))
 if __name__ == '__main__':
-    main()
-    #data = np.genfromtxt('logs/rewards.csv', delimiter=',')
-    #print(len(data))
-    #plt.plot(moving_average(data, 10))
-    #plt.show()
+    #main()
+    data = np.genfromtxt('logs/rewards.csv', delimiter=',')
+    print(len(data))
+    plt.plot(moving_average(data, 200))
+    plt.show()
     #test_change_detect()
 
 

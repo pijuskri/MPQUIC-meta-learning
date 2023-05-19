@@ -18,9 +18,6 @@ import os
 import threading, queue
 import multiprocessing as mp
 
-from central_service.pytorch_models.metaModel import MetaModel, ActorCritic
-from central_service.variables import REMOTE_HOST
-
 import time
 
 # local imports
@@ -30,11 +27,9 @@ from central_service.environment.environment import Environment
 from central_service.utils.logger import config_logger
 from central_service.utils.queue_ops import get_request, put_response
 from central_service.utils.data_transf import arrangeStateStreamsInfo, getTrainingVariables, allUnique
+from central_service.variables import REMOTE_HOST, A_DIM
 
 # ---------- Global Variables ----------
-S_INFO = 6  # bandwidth_path_i, path_i_mean_RTT, path_i_retransmitted_packets + path_i_lost_packets
-S_LEN = 8  # take how many frames in the past
-A_DIM = 2 # two actions -> path 1 or path 2
 PATHS = [1, 3] # correspond to path ids
 DEFAULT_PATH = 1  # default path without agent
 RANDOM_SEED = 42
@@ -168,7 +163,7 @@ class NetworkEnv(gym.Env):
         self.logger.debug("PATH: {}".format(path))
 
         # prepare response
-        response = [request['StreamID'], PATHS[path]]
+        response = [request['StreamID'], path]
         response = [str(r).encode('utf-8') for r in response]
         ev2 = threading.Event()
         put_response((response, ev2), self.tqueue, self.logger)
@@ -252,7 +247,8 @@ class NetworkEnv(gym.Env):
         down_shifts = res["down_shifts"]
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
-        reward = bitrate - down_shifts - buffering_ratio - initial_buffering
+        buffer_i = buffering_ratio / (1 - buffering_ratio)
+        reward = bitrate - down_shifts - buffer_i - initial_buffering
         self.previous_reward = reward
         return reward
 

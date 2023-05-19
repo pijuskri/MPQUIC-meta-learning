@@ -2,6 +2,7 @@ package quic
 
 import (
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -13,7 +14,7 @@ import (
 )
 
 //var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000)
-var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(2 * float64(time.Second)).Milliseconds()
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.5 * float64(time.Second)).Milliseconds()
 
 //var publisher *ZPublisher
 
@@ -26,6 +27,9 @@ type scheduler struct {
 	lastScheduled  time.Time
 	rlAction       chan int
 	rlactionActive int
+	maxAction      int
+	s1             rand.Source
+	r1             *rand.Rand
 }
 
 func openLogFile(path string) (*os.File, error) {
@@ -41,6 +45,9 @@ func (sch *scheduler) setup() {
 	sch.scheduleToMultiplePaths()
 	sch.lastScheduled = time.Now()
 	sch.rlAction = make(chan int, 50)
+	sch.maxAction = 5
+	sch.s1 = rand.NewSource(time.Now().UnixNano())
+	sch.r1 = rand.New(sch.s1)
 	go func() {
 		sch.rlAction <- 0
 	}()
@@ -256,7 +263,7 @@ pathLoop:
 	return selectedPath
 }
 
-func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
+func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) {
 
 	var avalPaths []*path
 
@@ -265,10 +272,7 @@ func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStrea
 	//s.pathsLock.Lock()
 	// XXX Avoid using PathID 0 if there is more than 1 path
 	if len(s.paths) <= 1 {
-		if !hasRetransmission && !s.paths[protocol.InitialPathID].SendingAllowed() {
-			return nil
-		}
-		return s.paths[protocol.InitialPathID]
+		return
 	}
 
 	// filter unavailable paths
@@ -297,7 +301,7 @@ pathLoop:
 
 	if len(avalPaths) < 2 {
 		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
-		return nil
+		return
 	}
 	//s.pathsLock.Unlock()
 
@@ -364,7 +368,7 @@ pathLoop:
 	//-----------------------------------------------------------------------------------------
 
 	// assign all volume to specified agent path
-	var selectedPathID protocol.PathID = protocol.PathID(response.PathID)
+	//var selectedPathID protocol.PathID = protocol.PathID(response.PathID)
 	/*
 		var selectedPath = avalPaths[0]
 		if response.PathID < uint8(len(avalPaths)) {
@@ -372,9 +376,69 @@ pathLoop:
 			utils.Infof("Received invalid path id: %u", response.PathID)
 		}
 	*/
-	var selectedPath = s.paths[selectedPathID]
+	//var selectedPath = s.paths[selectedPathID]
 	sch.rlAction <- int(response.PathID)
 	//selectedPaths[s.paths[selectedPathID]] = float64(stream.size)
+	return
+}
+
+func (sch *scheduler) propabilisticScheduler(s *session, hasRetransmission bool, prob1 float32, prob2 float32) *path {
+	var avalPaths []*path
+
+	//s.pathsLock.Lock()
+	// XXX Avoid using PathID 0 if there is more than 1 path
+	if len(s.paths) <= 1 {
+		if !hasRetransmission && !s.paths[protocol.InitialPathID].SendingAllowed() {
+			return nil
+		}
+		return s.paths[protocol.InitialPathID]
+	}
+
+	var selectedPath *path
+	// filter unavailable paths
+pathLoop:
+	// This forloop seems like its returning to the start
+	// Not sure I understand the point, maybe we assume zero paths failure
+	for pathID, pth := range s.paths {
+
+		if !pth.SendingAllowed() {
+			utils.Infof("pth.SendingAllowed() == false")
+			continue pathLoop
+		}
+
+		// If this path is potentially failed, do not consider it for sending
+		if pth.potentiallyFailed.Get() {
+			utils.Infof("pth.potentiallyFailed == true")
+			continue pathLoop
+		}
+
+		// XXX Prevent using initial pathID if multiple paths
+		if pathID == protocol.InitialPathID {
+			continue pathLoop
+		}
+		avalPaths = append(avalPaths, pth)
+	}
+
+	if len(avalPaths) < 2 {
+		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
+		//return s.paths[avalPaths[0].pathID]
+		return selectedPath
+	}
+	//s.pathsLock.Unlock()
+
+	// Add statistics for each Path
+	/*
+		for _, pth := range avalPaths {
+
+		}
+	*/
+
+	randv := sch.r1.Float32()
+	if prob1 > randv {
+		selectedPath = avalPaths[0]
+	} else {
+		selectedPath = avalPaths[1]
+	}
 
 	return selectedPath
 }
@@ -385,26 +449,23 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 	select {
 	case msg := <-sch.rlAction:
 		sch.rlactionActive = msg
-		log.Printf("RL action received")
-		log.Printf("RL output %d", msg)
+		//log.Printf("RL action received")
+		log.Printf("RL action received: %d", msg)
 	default:
-		//log.Printf("no Rl action")
-		//fmt.Println("no message sent")
+
 	}
-	//log.Printf("time diff %d : %d\n", elapsed, SMART_SCHEDULER_UPDATE_INTERVAL)
+
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
 		sch.lastScheduled = time.Now()
 		go sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
 
-		/*
-			output := sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
-			if output != nil {
-				log.Printf("RL output %d", output.pathID)
-				utils.Infof("RL output %u", output.pathID)
-			}
-		*/
 	}
-
+	if sch.rlactionActive == 0 {
+		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	} else if sch.rlactionActive >= 1 && sch.rlactionActive <= sch.maxAction {
+		prob1 := float32(sch.rlactionActive-1) / float32(sch.maxAction-1)
+		return sch.propabilisticScheduler(s, hasRetransmission, prob1, 1-prob1)
+	}
 	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
 }
 

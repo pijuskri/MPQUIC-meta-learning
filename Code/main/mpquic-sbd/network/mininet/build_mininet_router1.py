@@ -26,7 +26,7 @@ PATH_DIR = "/Workspace/mpquic-sbd/"
 USER='mininet'
 
 
-TC_QDISC_RATE = 0.5 #Mbit
+TC_QDISC_RATE = 1.5 #Mbit
 TC_QDISC_LATENCY = 20 #ms
 TC_QDISC_BURST = 2560
 NICE = 'nice -n -10'
@@ -231,8 +231,8 @@ def run():
         
     time.sleep(5)
     file_mpd = 'output_dash.mpd'
-    if playback == 'sara':
-        file_mpd = 'output_dash2.mpd'
+    #if playback == 'sara':
+    #    file_mpd = 'output_dash2.mpd'
         
     start = datetime.now()
     file_out = 'data/out_{0}_{1}.txt'.format(playback, start.strftime("%Y-%m-%d.%H:%M:%S"))
@@ -243,7 +243,7 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 15 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 

@@ -117,3 +117,8 @@ https://github.com/gpac/gpac
 converting my own video is causing issues cause mp4box outputs a specific (and more modern) mpd file, 
 while astream does not support it. Time to change astream code...
 to anyone reading this, do not use Astream. It has terrible code for reading mpd files.
+decided to hack the sara format support instead, do not do this!!!!
+sara and netflix dont have something in the mpd, they fail
+with the current video the blasic dash playback causes a lot of issues with jumping between low and higher bitrate. Difference between bitrates is 3x.
+
+#05/19
