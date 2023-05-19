@@ -243,7 +243,7 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 50 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 

@@ -1,4 +1,5 @@
 import dataclasses
+from datetime import datetime
 import math
 from dataclasses import dataclass
 
@@ -16,6 +17,7 @@ from central_service.utils.logger import config_logger
 from customGym.envs.NetworkEnv import NetworkEnv
 #from customGym.envs.NetworkEnv import NetworkState
 from typing import NamedTuple
+from pathlib import Path
 
 from central_service.variables import A_DIM, S_INFO
 
@@ -251,12 +253,11 @@ def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
 
     return ac_loss
 def main():
-
-
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 1000
-
+    max_steps = 10000
+    log_dir = Path(datetime.now().strftime('runs/%Y%m%d_%H_%M_%S'))
+    log_dir.mkdir(parents=True)
 
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
     print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
@@ -335,11 +336,11 @@ def main():
             #logger.debug(msg)
             logger.debug("====")
 
-    np.savetxt("logs/rewards.csv",
+    np.savetxt(log_dir / "rewards.csv",
                np.array(replay_memory.rewards),
                delimiter=", ",
                fmt='% s')
-    plt.plot(moving_average(replay_memory.rewards, 10))
+    plt.plot(moving_average(replay_memory.rewards, 20))
     plt.show()
     env.close()
 
@@ -353,14 +354,16 @@ def main():
 #def moving_average(x, w):
 #    return scipy.ndimage.gaussian_filter1d(x, (np.std(x) * w * 5)/(len(x)))
 def moving_average(x, w):
+    if w == 1:
+        return x
     m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
-    return scipy.ndimage.gaussian_filter1d(m, (np.std(x) * w * 25)/(len(x)))
+    return scipy.ndimage.gaussian_filter1d(m, np.std(x) * w * 2) #(np.std(x) * w * 25)/(len(x)
 if __name__ == '__main__':
-    #main()
-    data = np.genfromtxt('logs/rewards.csv', delimiter=',')
-    print(len(data))
-    plt.plot(moving_average(data, 200))
-    plt.show()
+    main()
+    #data = np.genfromtxt('logs/rewards.csv', delimiter=',')
+    #print(len(data))
+    #plt.plot(moving_average(data, 20))
+    #plt.show()
     #test_change_detect()
 
 

@@ -142,3 +142,7 @@ sbd-videos/
 conv_video/
 video_old/
 *.mp4
+
+#log files
+runs/
+log/
