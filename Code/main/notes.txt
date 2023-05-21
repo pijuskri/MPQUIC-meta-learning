@@ -122,3 +122,4 @@ sara and netflix dont have something in the mpd, they fail
 with the current video the blasic dash playback causes a lot of issues with jumping between low and higher bitrate. Difference between bitrates is 3x.
 
 #05/19
+netflix now works, the code was just dumb. It does seem to buffer for a long time

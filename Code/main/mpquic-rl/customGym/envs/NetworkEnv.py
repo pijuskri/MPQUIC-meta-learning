@@ -248,7 +248,7 @@ class NetworkEnv(gym.Env):
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
         buffer_i = buffering_ratio / (1 - buffering_ratio)
-        reward = bitrate - down_shifts - buffer_i - initial_buffering
+        reward = bitrate*0.5 - down_shifts - buffer_i * 5 - initial_buffering
         self.previous_reward = reward
         return reward
 
@@ -323,9 +323,9 @@ class NetworkEnv(gym.Env):
 # use of ``_get_obs`` and ``_get_info``:
 
     def step(self, action):
-        print("step", action)
+        #print("step", action)
         self.env_send(self.request, action)
-        print("response sent")
+        #print("response sent")
 
         #terminated =
         reward = self.reward(action, False)

@@ -17,10 +17,14 @@ idea for model: separate observation(network condition) sending with request. Se
 	-downshifts should maybe consider how much lower the bitrate is 
 -make infrastrucre to run experiment from agent
 
-use trace data
 -get a longer video for dash to play
 -make scheduler choose a path every 50ms
 	-use non blocking connection to model
 -modify model to use actions (minrtt, own judgements like chunk manager paper)
 	-make a propabilistic scheduler
 make sure models use propabilistic action picking and not argmax
+
+use trace data
+	process traces
+	read csv file and apply it to connections in mininet
+	provide bandwidth to scheduler

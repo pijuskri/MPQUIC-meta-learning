@@ -24,7 +24,7 @@ from central_service.variables import A_DIM, S_INFO
 # hyperparameters
 hidden_size = 256
 learning_rate = 3e-4
-apply_loss_steps = 10
+apply_loss_steps = 25
 
 # Constants
 GAMMA = 0.99
@@ -268,6 +268,7 @@ def main():
     all_lengths = []
     average_lengths = []
     all_rewards = []
+    loss_history = []
     #entropy_term = 0
     total_steps = 0
 
@@ -313,7 +314,7 @@ def main():
                     ac_optimizer.zero_grad()
                     ac_loss.backward()
                     ac_optimizer.step()
-
+                    loss_history.append(ac_loss)
                     msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
                                                                                 np.mean(replay_memory.entropy_term))
                     logger.debug(msg)
@@ -336,10 +337,10 @@ def main():
             #logger.debug(msg)
             logger.debug("====")
 
-    np.savetxt(log_dir / "rewards.csv",
-               np.array(replay_memory.rewards),
-               delimiter=", ",
-               fmt='% s')
+    np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
+    np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
+    plt.plot(moving_average(replay_memory.rewards, 20))
+    plt.show()
     plt.plot(moving_average(replay_memory.rewards, 20))
     plt.show()
     env.close()
@@ -353,6 +354,8 @@ def main():
 #    return np.convolve(x, np.ones(w), 'valid') / w
 #def moving_average(x, w):
 #    return scipy.ndimage.gaussian_filter1d(x, (np.std(x) * w * 5)/(len(x)))
+def plot_most_recent_results():
+    pass
 def moving_average(x, w):
     if w == 1:
         return x
