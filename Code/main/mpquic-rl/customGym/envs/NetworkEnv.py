@@ -149,6 +149,10 @@ class NetworkEnv(gym.Env):
             path2_retransmissions, path2_losses, \
             = getTrainingVariables(self.request)
 
+        1.576217, 311, 1071, 0, 0,\
+        0.515397, 929, 2884, 2, 0
+
+        self.logger.info(f"pure received obs: {getTrainingVariables(self.request)}")
         normalized_bwd_path0 = (self.bdw_paths[0] - 1.0) / (100.0 - 1.0)
         normalized_bwd_path1 = (self.bdw_paths[1] - 1.0) / (100.0 - 1.0)
         normalized_srtt_path0 = ((path1_smoothed_RTT * 1000.0) - 1.0) / (120.0)

@@ -24,6 +24,7 @@ type path struct {
 	sess   *session
 
 	rttStats *congestion.RTTStats
+	cong     congestion.SendAlgorithm
 	//bdwStats *congestion.BDWStats //SHI
 
 	sentPacketHandler     ackhandler.SentPacketHandler
@@ -66,15 +67,15 @@ func (p *path) setup(oliaSenders map[protocol.PathID]*congestion.OliaSender) {
 
 	p.pstats = &sbd.PathStats{}
 
-	var cong congestion.SendAlgorithm
+	//var cong congestion.SendAlgorithm
 
 	if p.sess.version >= protocol.VersionMP && oliaSenders != nil && p.pathID != protocol.InitialPathID {
-		cong = congestion.NewOliaSender(oliaSenders, p.rttStats, protocol.InitialCongestionWindow, protocol.DefaultMaxCongestionWindow)
-		oliaSenders[p.pathID] = cong.(*congestion.OliaSender)
+		p.cong = congestion.NewOliaSender(oliaSenders, p.rttStats, protocol.InitialCongestionWindow, protocol.DefaultMaxCongestionWindow)
+		oliaSenders[p.pathID] = p.cong.(*congestion.OliaSender)
 	}
 
 	//cong.BandwidthEstimate()
-	sentPacketHandler := ackhandler.NewSentPacketHandler(p.rttStats, cong, p.onRTO)
+	sentPacketHandler := ackhandler.NewSentPacketHandler(p.rttStats, p.cong, p.onRTO)
 
 	now := time.Now()
 

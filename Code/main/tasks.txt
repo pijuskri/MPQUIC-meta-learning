@@ -37,6 +37,6 @@ make client not use RL scheduling
 
 #might not be too important, netflix seems to work well now
 videos
-	Recomvert video to be the same bitrate
+	#Recomvert video to be the same bitrate
 	Make segments amller(2 sec)
 	Cut off astream if taking lomger than video length 

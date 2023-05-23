@@ -308,7 +308,8 @@ pathLoop:
 	// Add statistics for each Path
 	for _, pth := range avalPaths {
 		var id uint8 = uint8(pth.pathID)
-		var bdw uint64 = 10 //uint64(pth.bdwStats.GetBandwidth()) //TODO support bandwidth
+		//1048576
+		var bdw uint64 = uint64(pth.cong.BandwidthEstimate()) / 1024 //uint64(pth.bdwStats.GetBandwidth()) //TODO support bandwidth
 		var smRTT float64 = pth.rttStats.SmoothedRTT().Seconds()
 		sntPkts, sntRetrans, sntLost := pth.sentPacketHandler.GetStatistics()
 

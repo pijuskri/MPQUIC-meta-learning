@@ -131,3 +131,6 @@ use 5g dataset, use bandwith and average ping. Replace nan ping/loss values. Do 
 Only download
 
 the vm is absolutely cursed, installing packages with python does not work. 
+
+#05/23
+seems other people simply provide very high quality video to cause full use of bandwith, gonna do that too probably. (https://ieeexplore-ieee-org.proxy.uba.uva.nl/document/7546928)

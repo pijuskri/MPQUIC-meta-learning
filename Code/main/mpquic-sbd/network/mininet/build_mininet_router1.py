@@ -295,7 +295,7 @@ def run():
         loss = float(row[2])
         print("band {0}, latency {1}, loss {2}".format(band, latency, loss))
         #print(datetime.now())
-        #net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit".format(latency, band))
+        net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit".format(latency, band))
         #print("=======LTE printed=========")
 
         #"tc qdisc change dev eth1 root netem delay 80ms 10ms"
