@@ -309,7 +309,7 @@ pathLoop:
 	for _, pth := range avalPaths {
 		var id uint8 = uint8(pth.pathID)
 		//1048576
-		var bdw uint64 = uint64(pth.cong.BandwidthEstimate()) / 1024 //uint64(pth.bdwStats.GetBandwidth()) //TODO support bandwidth
+		var bdw uint64 = uint64(pth.cong.BandwidthEstimate()) / 1024 //uint64(pth.bdwStats.GetBandwidth())
 		var smRTT float64 = pth.rttStats.SmoothedRTT().Seconds()
 		sntPkts, sntRetrans, sntLost := pth.sentPacketHandler.GetStatistics()
 
@@ -445,7 +445,6 @@ pathLoop:
 }
 
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
-
 	elapsed := time.Since(sch.lastScheduled).Milliseconds()
 	select {
 	case msg := <-sch.rlAction:
@@ -475,7 +474,12 @@ func (sch *scheduler) selectPath(s *session, hasRetransmission bool, hasStreamRe
 	// XXX Currently round-robin
 	//_todo select the right scheduler dynamically
 	//return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
-	return sch.selectPathSmart(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	log.Printf("IgnoreRLScheduler: %d\n", s.config.IgnoreRLScheduler)
+	if !s.config.IgnoreRLScheduler {
+		return sch.selectPathSmart(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	} else {
+		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+	}
 	// return sch.selectPathRoundRobin(s, hasRetransmission, hasStreamRetransmission, fromPth)
 }
 

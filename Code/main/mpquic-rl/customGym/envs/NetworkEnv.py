@@ -149,16 +149,27 @@ class NetworkEnv(gym.Env):
             path2_retransmissions, path2_losses, \
             = getTrainingVariables(self.request)
 
-        1.576217, 311, 1071, 0, 0,\
-        0.515397, 929, 2884, 2, 0
+        #1.576217, 311, 1071, 0, 0,\
+        #0.515397, 929, 2884, 2, 0
 
-        self.logger.info(f"pure received obs: {getTrainingVariables(self.request)}")
-        normalized_bwd_path0 = (self.bdw_paths[0] - 1.0) / (100.0 - 1.0)
-        normalized_bwd_path1 = (self.bdw_paths[1] - 1.0) / (100.0 - 1.0)
-        normalized_srtt_path0 = ((path1_smoothed_RTT * 1000.0) - 1.0) / (120.0)
-        normalized_srtt_path1 = ((path2_smoothed_RTT * 1000.0) - 1.0) / (120.0)
-        normalized_loss_path0 = ((path1_retransmissions + path1_losses) - 0.0) / 20.0
-        normalized_loss_path1 = ((path2_retransmissions + path2_losses) - 0.0) / 20.0
+        self.logger.info(f"Path1 bdw: {path1_bandwidth}, path2: {path2_bandwidth}")
+        #normalized_bwd_path0 = (self.bdw_paths[0] - 1.0) / (100.0 - 1.0)
+        #normalized_bwd_path1 = (self.bdw_paths[1] - 1.0) / (100.0 - 1.0)
+        #normalized_srtt_path0 = ((path1_smoothed_RTT * 1000.0) - 1.0) / (120.0)
+        #normalized_srtt_path1 = ((path2_smoothed_RTT * 1000.0) - 1.0) / (120.0)
+        #normalized_loss_path0 = ((path1_retransmissions + path1_losses) - 0.0) / 20.0
+        #normalized_loss_path1 = ((path2_retransmissions + path2_losses) - 0.0) / 20.0
+
+        bdw_max = 100.0 * 1024 #convert from kb to mb
+        rtt_max = 300.0
+        max_loss = 100.0
+
+        normalized_bwd_path0 = path1_bandwidth / bdw_max
+        normalized_bwd_path1 = path2_bandwidth / bdw_max
+        normalized_srtt_path0 = ((path1_smoothed_RTT * 1000.0) - 1.0) / (rtt_max)
+        normalized_srtt_path1 = ((path2_smoothed_RTT * 1000.0) - 1.0) / (rtt_max)
+        normalized_loss_path0 = ((path1_retransmissions + path1_losses) / path1_packets) * max_loss
+        normalized_loss_path1 = ((path2_retransmissions + path2_losses) / path2_packets) * max_loss
         return NetworkState(normalized_bwd_path0,normalized_bwd_path1,normalized_srtt_path0,normalized_srtt_path1,
                             normalized_loss_path0,normalized_loss_path1)
     def env_send(self, request, path):

@@ -256,7 +256,7 @@ def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
 def main():
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 10000
+    max_steps = 100000000
     log_dir = Path(datetime.now().strftime('runs/%Y%m%d_%H_%M_%S'))
     log_dir.mkdir(parents=True)
 
@@ -269,6 +269,7 @@ def main():
     all_lengths = []
     average_lengths = []
     all_rewards = []
+    states = []
     loss_history = []
     #entropy_term = 0
     total_steps = 0
@@ -285,6 +286,7 @@ def main():
         for episode in range(1):
             state = env.reset()
             print("Episode ", episode)
+            #TODO handle max steps
             for step in range(max_steps):
 
                 value, policy_dist = actor_critic.forward(torch.Tensor(state))
@@ -300,13 +302,13 @@ def main():
                 replay_memory.update_memory(action, value, policy_dist, reward)
 
                 change = memory.add_obs(state, actor_critic.state_dict())
-                if change:
-                    found = memory.findModel(state)
-                    if found is not None:
-                        actor_critic.load_state_dict(found)
-                    else: actor_critic.reset()
-                    replay_memory.clear()
-                #states.append(state)
+                #if change:
+                #    found = memory.findModel(state)
+                #    if found is not None:
+                #        actor_critic.load_state_dict(found)
+                #    else: actor_critic.reset()
+                #    replay_memory.clear()
+                states.append(state)
 
                 #TODO make sure replay memory loss is used for previous model after change reset
                 if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
@@ -340,9 +342,9 @@ def main():
 
     np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
     np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
-    plt.plot(moving_average(replay_memory.rewards, 20))
+    plt.plot(moving_average(replay_memory.rewards, 10))
     plt.show()
-    plt.plot(moving_average(loss_history, 20))
+    plt.plot(moving_average(loss_history, 10))
     plt.show()
     env.close()
 

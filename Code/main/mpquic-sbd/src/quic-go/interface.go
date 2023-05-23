@@ -122,7 +122,8 @@ type Config struct {
 	// Should we cache handshake parameters? If no cache available, should we create one?
 	CacheHandshake bool
 	// Should the host try to create new paths, if possible?
-	CreatePaths bool
+	CreatePaths       bool
+	IgnoreRLScheduler bool
 }
 
 // A Listener for incoming QUIC connections
