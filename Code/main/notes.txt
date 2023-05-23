@@ -123,3 +123,11 @@ with the current video the blasic dash playback causes a lot of issues with jump
 
 #05/19
 netflix now works, the code was just dumb. It does seem to buffer for a long time
+
+#05/22
+could try using a unified qoe evaluation model https://ieeexplore-ieee-org.proxy.uba.uva.nl/document/8666971
+
+use 5g dataset, use bandwith and average ping. Replace nan ping/loss values. Do second pass and do a moving average(window=15) over the ping and loss. Min Bandwith of 50kb.
+Only download
+
+the vm is absolutely cursed, installing packages with python does not work. 

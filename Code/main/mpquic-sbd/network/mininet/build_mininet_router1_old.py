@@ -14,8 +14,6 @@ from datetime import datetime
 #import subprocess
 
 import argparse
-from threading import Timer
-#import pandas as pd
 
 #http://recolog.blogspot.com/2016/02/emulating-networks-with-routers-using.html
  
@@ -28,49 +26,15 @@ PATH_DIR = "/Workspace/mpquic-sbd/"
 USER='mininet'
 
 
-wifi_bandwith = 0.1#1.5
-wifi_latency = 10
-lte_bandwith = 3
-lte_latency = 30
-TC_QDISC_RATE = 1 #Mbit
-#TC_QDISC_LATENCY = 20 #ms
-#TC_QDISC_BURST = 2560
+TC_QDISC_RATE = 1.5 #Mbit
+TC_QDISC_LATENCY = 20 #ms
+TC_QDISC_BURST = 2560
 NICE = 'nice -n -10'
 CLIENT = 'CLIENT'
 SERVER = 'SERVER'
 TIMEOUT = 35
 TCP_CORE_MB = 100000
 
-import time
-from threading import Event, Thread
-
-class RepeatedTimer:
-
-    """Repeat `function` every `interval` seconds."""
-
-    def __init__(self, interval, function, *args, **kwargs):
-        self.interval = interval
-        self.function = function
-        self.args = args
-        self.kwargs = kwargs
-        self.start = time.time()
-        self.event = Event()
-        self.thread = Thread(target=self._target)
-        self.thread.start()
-        self.count = 0
-
-    def _target(self):
-        while not self.event.wait(self._time):
-            self.function(self.count, *self.args, **self.kwargs)
-            self.count = self.count + 1
-
-    @property
-    def _time(self):
-        return self.interval - ((time.time() - self.start) % self.interval)
-
-    def stop(self):
-        self.event.set()
-        self.thread.join()
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
 
@@ -157,7 +121,7 @@ def run():
     net[ 'r2' ].cmd("ifconfig r2-eth2 10.0.6.1/24")
     net[ 'r2' ].cmd("route add default gw 10.0.0.1")
     net[ 'r2' ].cmd("ip route add 10.0.2.0/24 via 10.0.0.10 dev r2-eth1")
-    net[ 'r2' ].cmd("tc qdisc add dev r2-eth0 root netem limit 1000 delay {0}ms rate {1}Mbit".format(wifi_latency, wifi_bandwith))
+    net[ 'r2' ].cmd("tc qdisc add dev r2-eth0 root netem limit 67 delay {0}ms rate {1}Mbit".format(TC_QDISC_LATENCY, TC_QDISC_RATE))
     #limit 67: packet buffer limit
 
     #configuration r3
@@ -172,7 +136,7 @@ def run():
     net[ 'r4' ].cmd("ifconfig r4-eth2 10.0.8.1/24")    
     net[ 'r4' ].cmd("route add default gw 10.0.0.5")
     net[ 'r4' ].cmd("route add -net 10.0.2.0 netmask 255.255.255.0 gw 10.0.0.14")
-    net[ 'r4' ].cmd("tc qdisc add dev r4-eth0 root netem limit 1000 delay {0}ms rate {1}Mbit".format(lte_latency, lte_bandwith))
+    net[ 'r4' ].cmd("tc qdisc add dev r4-eth0 root netem limit 67 delay {0}ms rate {1}Mbit".format(TC_QDISC_LATENCY, TC_QDISC_RATE))
 
     #configuration r5
     net[ 'r5' ].cmd("ifconfig r5-eth0 10.0.0.10/30")    
@@ -280,34 +244,12 @@ def run():
     file_out = 'data/out_{0}_{1}.txt'.format(playback, start.strftime("%Y-%m-%d.%H:%M:%S"))
     #print(file_out)
 
-    #trace_df =  pd.read_csv(trace_file)
-    trace_df = []
-    import csv
-    with open(trace_file) as csvfile:
-        spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        for row in spamreader:
-            trace_df.append(row)
-
-    def set_lte_trace(idx, trace_df):
-        row = trace_df[idx + 1]
-        band = (int(row[0]) / 100) + 50
-        latency = int(row[1])
-        loss = float(row[2])
-        print("band {0}, latency {1}, loss {2}".format(band, latency, loss))
-        #print(datetime.now())
-        #net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit".format(latency, band))
-        #print("=======LTE printed=========")
-
-        #"tc qdisc change dev eth1 root netem delay 80ms 10ms"
-
-    trace_runner = RepeatedTimer(1, set_lte_trace, trace_df)
-
     for i in range(n_times):
         if download:
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 5 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
@@ -315,7 +257,6 @@ def run():
         net[ 'client' ].cmd(cmd)
 
     net['server'].cmd("kill -9 {0}".format(server_pid))
-    trace_runner.stop()
     print('Finishing experiment')
 
     end = datetime.now()
@@ -355,15 +296,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--times', '-t',
                         metavar='times',
-                        type=int,
+                        type=str,
                         default=1,
                         help="Number of types to restart dash server")
-
-    parser.add_argument('--trace', '-tf',
-                        metavar='trace',
-                        type=str,
-                        default='/home/mininet/Workspace/mpquic-sbd/network/mininet/processed/car_174.csv',
-                        help="Path to trace to use for the experiment")
 
 
     # Execute the parse_args() method
@@ -373,7 +308,6 @@ if __name__ == '__main__':
     download                   = args.download
     playback                   = args.playback
     n_times = args.times
-    trace_file = args.trace
 
     # if len(sys.argv) > 1:
     #     with_background = int(sys.argv[1])

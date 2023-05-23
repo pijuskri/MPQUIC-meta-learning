@@ -175,9 +175,10 @@ class FalconMemory:
             probs[i], _ = self.cf[i].update(value)
         #prob = np.cumprod(probs)
         prob = np.cumprod(probs)[-1]
-        #print(obs)
+        print(obs)
         print('network switch prob', np.mean(prob), np.cumprod(probs)[-1]) #, prob
         #print()
+        #TODO after change have cooldown to avoid constant switching
         if prob > 99999.5: #0.5
             start = self.observations[0]
             end = self.observations[-3]
@@ -314,7 +315,7 @@ def main():
                     ac_optimizer.zero_grad()
                     ac_loss.backward()
                     ac_optimizer.step()
-                    loss_history.append(ac_loss)
+                    loss_history.append(ac_loss.detach().numpy())
                     msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
                                                                                 np.mean(replay_memory.entropy_term))
                     logger.debug(msg)
@@ -341,7 +342,7 @@ def main():
     np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
     plt.plot(moving_average(replay_memory.rewards, 20))
     plt.show()
-    plt.plot(moving_average(replay_memory.rewards, 20))
+    plt.plot(moving_average(loss_history, 20))
     plt.show()
     env.close()
 

@@ -182,6 +182,7 @@ class NetworkEnv(gym.Env):
     def _get_obs(self):
         if self.request is not None:
             ret_state = self.get_net_state()
+            self.logger.info(f"Received obs: {dataclasses.astuple(ret_state)}")
             return np.array(list(dataclasses.astuple(ret_state)))
             #return torch.Tensor(list(dataclasses.astuple(ret_state)))
         else:

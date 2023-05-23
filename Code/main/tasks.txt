@@ -22,9 +22,21 @@ idea for model: separate observation(network condition) sending with request. Se
 	-use non blocking connection to model
 -modify model to use actions (minrtt, own judgements like chunk manager paper)
 	-make a propabilistic scheduler
+	
 make sure models use propabilistic action picking and not argmax
+Make sure models have random seed set
 
 use trace data
-	process traces
-	read csv file and apply it to connections in mininet
+	-process traces
+	make sure traces are long enough
+	-read csv file and apply it to connections in mininet
 	provide bandwidth to scheduler
+implement LSTM model
+make client not use RL scheduling
+
+
+#might not be too important, netflix seems to work well now
+videos
+	Recomvert video to be the same bitrate
+	Make segments amller(2 sec)
+	Cut off astream if taking lomger than video length 
