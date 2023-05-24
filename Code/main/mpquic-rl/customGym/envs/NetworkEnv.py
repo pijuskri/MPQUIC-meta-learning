@@ -255,8 +255,8 @@ class NetworkEnv(gym.Env):
         #    if not self.cqueue.empty():
         #        res = list(self.cqueue.queue)[-1]
         if res is None:
-            if self.previous_reward is not None:
-                return self.previous_reward
+            #if self.previous_reward is not None:
+            #    return self.previous_reward
             return 0
 
         bandwidth = res["bandwidth"] / 1048576

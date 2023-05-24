@@ -27,8 +27,8 @@ TRAINING = True #if true, store model after done, have high exploration
 
 # hyperparameters
 hidden_size = 256
-learning_rate = 3e-2#3e-4
-apply_loss_steps = 25
+learning_rate = 0.01#3e-4
+apply_loss_steps = 50
 
 GAMMA = 0.99
 EPS_START = 0.3 #0.9
@@ -373,11 +373,11 @@ def main():
     plt.plot(moving_average(replay_memory.rewards, 10))
     plt.title(f'Reward {run_id}')
     plt.show()
-    plt.plot(moving_average(loss_history, 1))
-    plt.yscale('log')
+    plt.plot(moving_average(loss_history, 3))
+    #plt.yscale('log')
     plt.title(f'Loss {run_id}')
-    plt.plot(moving_average(loss_history_critic, 1))
-    plt.plot(moving_average(loss_history_actor, 1))
+    #plt.plot(moving_average(loss_history_critic, 1))
+    #plt.plot(moving_average(loss_history_actor, 1))
     plt.show()
     env.close()
 
