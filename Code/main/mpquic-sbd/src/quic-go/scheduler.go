@@ -14,7 +14,9 @@ import (
 )
 
 //var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000) #0.5
-var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.25 * float64(time.Second)).Milliseconds()
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.1 * float64(time.Second)).Milliseconds()
+var RLACTIONACTIVE = 0
+var LASTSCHEDULED time.Time
 
 //var publisher *ZPublisher
 
@@ -303,6 +305,7 @@ pathLoop:
 
 	if len(avalPaths) < 2 {
 		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
+		sch.rlAction <- 0
 		return
 	}
 	//s.pathsLock.Unlock()
@@ -311,7 +314,7 @@ pathLoop:
 	for _, pth := range avalPaths {
 		var id uint8 = uint8(pth.pathID)
 		//1048576
-		var bdw uint64 = uint64(pth.cong.BandwidthEstimate()) / 1024 //uint64(pth.bdwStats.GetBandwidth())
+		var bdw uint64 = uint64(pth.cong.BandwidthEstimate()) // / 1024 //uint64(pth.bdwStats.GetBandwidth())
 		var smRTT float64 = pth.rttStats.SmoothedRTT().Seconds()
 		sntPkts, sntRetrans, sntLost := pth.sentPacketHandler.GetStatistics()
 
@@ -447,10 +450,11 @@ pathLoop:
 }
 
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
-	elapsed := time.Since(sch.lastScheduled).Milliseconds()
+	elapsed := time.Since(LASTSCHEDULED).Milliseconds()
 	select {
 	case msg := <-sch.rlAction:
-		sch.rlactionActive = msg
+		//sch.rlactionActive = msg
+		RLACTIONACTIVE = msg
 		//log.Printf("RL action received")
 		log.Printf("RL action received: %d", msg)
 	default:
@@ -458,14 +462,16 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 	}
 
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
-		sch.lastScheduled = time.Now()
+		//sch.lastScheduled = time.Now()
+		LASTSCHEDULED = time.Now()
 		go sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
 
 	}
-	if sch.rlactionActive == 0 {
+	action := RLACTIONACTIVE
+	if action == 0 {
 		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
-	} else if sch.rlactionActive >= 1 && sch.rlactionActive <= sch.maxAction {
-		prob1 := float32(sch.rlactionActive-1) / float32(sch.maxAction-1)
+	} else if action >= 1 && action <= sch.maxAction {
+		prob1 := float32(action-1) / float32(sch.maxAction-1)
 		path := sch.propabilisticScheduler(s, hasRetransmission, prob1, 1-prob1)
 		if path == nil {
 			return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)

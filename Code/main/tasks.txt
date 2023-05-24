@@ -28,20 +28,29 @@ videos
 	#Recomvert video to be the same bitrate
 	Make segments amller(2 sec)
 	Cut off astream if taking lomger than video length 
-	
+-make client not use RL scheduling
+-Make sure models have random seed set
+-make model do exploration
+-do not wait for zero path failures
+
 make sure models use propabilistic action picking and not argmax
-Make sure models have random seed set
-make model do exploration
+
+
 
 use trace data
 	-process traces
 	make sure traces are long enough
 	-read csv file and apply it to connections in mininet
 	-provide bandwidth to scheduler
+
+finish falcon
+	save model
+	train offline models
 implement LSTM model
--make client not use RL scheduling
-do not wait for zero path failures
-use 2 traces for a mobile test
+make storage for runs
+implement trace picking in environement
+	use 2 traces for a mobile test
+	do train-test split
 
 
 

@@ -259,12 +259,14 @@ class NetworkEnv(gym.Env):
                 return self.previous_reward
             return 0
 
+        bandwidth = res["bandwidth"] / 1048576
         bitrate = res['bitrate']/ 1048576 #MB
-        down_shifts = res["down_shifts"]
+        down_shifts = 0#res["down_shifts"]
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
         buffer_i = buffering_ratio / (1 - buffering_ratio)
-        reward = bitrate*0.5 - down_shifts - buffer_i * 5 - initial_buffering
+        reward = bandwidth
+        #reward = bitrate*0.5 - down_shifts - buffer_i * 5 - initial_buffering
         self.previous_reward = reward
         return reward
 

@@ -25,7 +25,7 @@ type OliaSender struct {
 	olia            *Olia
 	oliaSenders     map[protocol.PathID]*OliaSender
 
-	groupHistory []*GroupItem
+	groupHistory     []*GroupItem
 	groupHistoryNext uint8
 
 	// Track the largest packet that has been sent.
@@ -64,10 +64,11 @@ type OliaSender struct {
 
 	initialCongestionWindow    protocol.PacketNumber
 	initialMaxCongestionWindow protocol.PacketNumber
+	bdwStats                   *BDWStats
 }
 
 func NewOliaSender(oliaSenders map[protocol.PathID]*OliaSender, rttStats *RTTStats, initialCongestionWindow, initialMaxCongestionWindow protocol.PacketNumber) SendAlgorithmWithDebugInfo {
-	
+
 	initialGroupHistory := make([]*GroupItem, GROUP_HISTORY_SIZE)
 
 	for i := range initialGroupHistory {
@@ -85,15 +86,14 @@ func NewOliaSender(oliaSenders map[protocol.PathID]*OliaSender, rttStats *RTTSta
 		numConnections:             defaultNumConnections,
 		olia:                       NewOlia(0),
 		oliaSenders:                oliaSenders,
-		groupHistory:				initialGroupHistory,
-		groupHistoryNext: 			0,
-
+		groupHistory:               initialGroupHistory,
+		groupHistoryNext:           0,
+		bdwStats:                   NewBDWStats(60000),
 	}
 }
 
-
 func (o *OliaSender) UpdateGroupEpoch(group uint8, epoch uint16) {
-	
+
 	//SBD
 	found := -1
 
@@ -118,19 +118,18 @@ func (o *OliaSender) getLatestEpoch() uint16 {
 
 	var latestEpoch uint16
 
-	for _, os := range o.oliaSenders { 
+	for _, os := range o.oliaSenders {
 		/* index of latest item */
 		idx := (os.groupHistoryNext - 1 + GROUP_HISTORY_SIZE) % GROUP_HISTORY_SIZE
 		epoch := os.groupHistory[idx].epoch
 
-		if (epoch > latestEpoch) {
-			latestEpoch = epoch; 
+		if epoch > latestEpoch {
+			latestEpoch = epoch
 		}
 	}
 
 	return latestEpoch
 }
-
 
 func (o *OliaSender) hasGroupEpochs() bool {
 
@@ -145,10 +144,10 @@ func (o *OliaSender) getGroupNoFilter(epoch uint16) int {
 	group := -1
 
 	for i := 0; i < int(GROUP_HISTORY_SIZE); i++ {
-	
-		if (o.groupHistory[i].epoch == epoch) {
+
+		if o.groupHistory[i].epoch == epoch {
 			group = int(o.groupHistory[i].group)
-			break;
+			break
 		}
 	}
 
@@ -157,38 +156,38 @@ func (o *OliaSender) getGroupNoFilter(epoch uint16) int {
 }
 
 func (o *OliaSender) getEpoch() uint16 {
-	
+
 	latestEpoch := o.getLatestEpoch()
-	if (latestEpoch == 0) {
+	if latestEpoch == 0 {
 		return 0
 	}
 
 	for i := uint16(0); i < uint16(GROUP_HISTORY_SIZE); i++ {
 		searchEpoch := latestEpoch - i
-		if (searchEpoch == 0) {
-			break; // done here
+		if searchEpoch == 0 {
+			break // done here
 		}
 
-		allHaveEpoch := 1; // start with the assumpation that all have 
+		allHaveEpoch := 1 // start with the assumpation that all have
 
-		for _, os := range o.oliaSenders { 
-			
+		for _, os := range o.oliaSenders {
+
 			var group int
 
-			if (!os.hasGroupEpochs()) {
+			if !os.hasGroupEpochs() {
 				continue
 			}
 
 			group = os.getGroupNoFilter(searchEpoch)
 
-			if (group == 0) {
+			if group == 0 {
 				allHaveEpoch = 0
-				break;
+				break
 			}
 		}
 
-		if (allHaveEpoch > 0) {
-			return searchEpoch;
+		if allHaveEpoch > 0 {
+			return searchEpoch
 		}
 
 	}
@@ -203,13 +202,12 @@ func (o *OliaSender) getGroup(epoch uint16) int {
 	return group
 }
 
-
 func (o *OliaSender) canBeSent(group uint8, epoch uint16) bool {
-	
+
 	skGroup := o.getGroup(epoch)
 
 	//non-congested
-	if skGroup == 0  {
+	if skGroup == 0 {
 		return true
 	}
 
@@ -221,7 +219,6 @@ func (o *OliaSender) canBeSent(group uint8, epoch uint16) bool {
 	//different group
 	return false
 }
-
 
 func (o *OliaSender) TimeUntilSend(now time.Time, bytesInFlight protocol.ByteCount) time.Duration {
 	if o.InRecovery() {
@@ -276,12 +273,10 @@ func (o *OliaSender) isCwndLimited(bytesInFlight protocol.ByteCount) bool {
 	return slowStartLimited || availableBytes <= maxBurstBytes
 }
 
-
-
 func getMaxCwnd(m map[protocol.PathID]*OliaSender, group uint8, epoch uint16) protocol.PacketNumber {
 	var bestCwnd protocol.PacketNumber
 	for _, os := range m {
-		
+
 		//SBD - Restrict groups
 		if !os.canBeSent(group, epoch) {
 			continue
@@ -340,11 +335,11 @@ func (o *OliaSender) getEpsilon(group uint8, epoch uint16) {
 		}
 
 		// count the flow
-		groupCnt++;
+		groupCnt++
 
 		tmpRTT = os.rttStats.SmoothedRTT() * os.rttStats.SmoothedRTT()
 		tmpBytes = os.olia.SmoothedBytesBetweenLosses()
-		if int64(tmpBytes) * bestRTT.Nanoseconds() >= int64(bestBytes) * tmpRTT.Nanoseconds() {
+		if int64(tmpBytes)*bestRTT.Nanoseconds() >= int64(bestBytes)*tmpRTT.Nanoseconds() {
 			bestRTT = tmpRTT
 			bestBytes = tmpBytes
 		}
@@ -365,7 +360,7 @@ func (o *OliaSender) getEpsilon(group uint8, epoch uint16) {
 		} else {
 			tmpRTT = os.rttStats.SmoothedRTT() * os.rttStats.SmoothedRTT()
 			tmpBytes = os.olia.SmoothedBytesBetweenLosses()
-			if int64(tmpBytes) * bestRTT.Nanoseconds() >= int64(bestBytes) * tmpRTT.Nanoseconds() {
+			if int64(tmpBytes)*bestRTT.Nanoseconds() >= int64(bestBytes)*tmpRTT.Nanoseconds() {
 				BNotM++
 			}
 		}
@@ -387,7 +382,7 @@ func (o *OliaSender) getEpsilon(group uint8, epoch uint16) {
 			tmpBytes = os.olia.SmoothedBytesBetweenLosses()
 			tmpCwnd = os.congestionWindow
 
-			if tmpCwnd < maxCwnd && int64(tmpBytes) * bestRTT.Nanoseconds() >= int64(bestBytes) * tmpRTT.Nanoseconds() {
+			if tmpCwnd < maxCwnd && int64(tmpBytes)*bestRTT.Nanoseconds() >= int64(bestBytes)*tmpRTT.Nanoseconds() {
 				os.olia.epsilonNum = 1
 				//SBD
 				// os.olia.epsilonDen = uint32(len(o.oliaSenders)) * uint32(BNotM)
@@ -404,7 +399,7 @@ func (o *OliaSender) getEpsilon(group uint8, epoch uint16) {
 		}
 	}
 }
- 
+
 func (o *OliaSender) maybeIncreaseCwnd(ackedPacketNumber protocol.PacketNumber, ackedBytes protocol.ByteCount, bytesInFlight protocol.ByteCount) {
 	// Do not increase the congestion window unless the sender is close to using
 	// the current window.
@@ -442,6 +437,7 @@ func (o *OliaSender) OnPacketAcked(ackedPacketNumber protocol.PacketNumber, acke
 	if o.InSlowStart() {
 		o.hybridSlowStart.OnPacketAcked(ackedPacketNumber)
 	}
+	o.bdwStats.UpdateBDW(o.BandwidthEstimateOld())
 }
 
 func (o *OliaSender) OnPacketLost(packetNumber protocol.PacketNumber, lostBytes protocol.ByteCount, bytesInFlight protocol.ByteCount) {
@@ -452,7 +448,7 @@ func (o *OliaSender) OnPacketLost(packetNumber protocol.PacketNumber, lostBytes 
 			o.stats.slowstartPacketsLost++
 			o.stats.slowstartBytesLost += lostBytes
 			if o.slowStartLargeReduction {
-				if o.stats.slowstartPacketsLost == 1 || (o.stats.slowstartBytesLost/protocol.DefaultTCPMSS) > (o.stats.slowstartBytesLost - lostBytes)/protocol.DefaultTCPMSS {
+				if o.stats.slowstartPacketsLost == 1 || (o.stats.slowstartBytesLost/protocol.DefaultTCPMSS) > (o.stats.slowstartBytesLost-lostBytes)/protocol.DefaultTCPMSS {
 					// Reduce congestion window by 1 for every mss of bytes lost.
 					o.congestionWindow = utils.MaxPacketNumber(o.congestionWindow-1, o.minCongestionWindow)
 				}
@@ -522,7 +518,7 @@ func (o *OliaSender) RetransmissionDelay() time.Duration {
 	if o.rttStats.SmoothedRTT() == 0 {
 		return 0
 	}
-	return o.rttStats.SmoothedRTT() + o.rttStats.MeanDeviation() * 4
+	return o.rttStats.SmoothedRTT() + o.rttStats.MeanDeviation()*4
 }
 
 func (o *OliaSender) SmoothedRTT() time.Duration {
@@ -533,13 +529,16 @@ func (o *OliaSender) SetSlowStartLargeReduction(enabled bool) {
 	o.slowStartLargeReduction = enabled
 }
 
-func (o *OliaSender) BandwidthEstimate() Bandwidth {
+func (o *OliaSender) BandwidthEstimateOld() Bandwidth {
 	srtt := o.rttStats.SmoothedRTT()
 	if srtt == 0 {
 		// If we haven't measured an rtt, the bandwidth estimate is unknown.
 		return 0
 	}
 	return BandwidthFromDelta(o.GetCongestionWindow(), srtt)
+}
+func (o *OliaSender) BandwidthEstimate() Bandwidth {
+	return o.bdwStats.GetBandwidth()
 }
 
 // HybridSlowStart returns the hybrid slow start instance for testing

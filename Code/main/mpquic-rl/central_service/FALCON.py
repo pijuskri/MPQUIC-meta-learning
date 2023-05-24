@@ -1,4 +1,5 @@
 import dataclasses
+import random
 from datetime import datetime
 import math
 from dataclasses import dataclass
@@ -22,13 +23,17 @@ from pathlib import Path
 
 from central_service.variables import A_DIM, S_INFO
 
+TRAINING = True #if true, store model after done, have high exploration
+
 # hyperparameters
 hidden_size = 256
-learning_rate = 3e-4
+learning_rate = 3e-2#3e-4
 apply_loss_steps = 25
 
-# Constants
 GAMMA = 0.99
+EPS_START = 0.3 #0.9
+EPS_END = 0.05
+EPS_DECAY = 1000 #higher = slower decay
 
 
 class _ChangeFinderAbstract(object):
@@ -175,9 +180,10 @@ class FalconMemory:
         for i, value in enumerate(obs):
             probs[i], _ = self.cf[i].update(value)
         #prob = np.cumprod(probs)
+
+        #print(obs)
+        print('network switch prob {:.1f} {:.1f}'.format(np.mean(probs), np.cumprod(probs)[-1])) #, prob
         prob = np.cumprod(probs)[-1]
-        print(obs)
-        print('network switch prob', np.mean(prob), np.cumprod(probs)[-1]) #, prob
         #print()
         #TODO after change have cooldown to avoid constant switching
         if prob > 99999.5: #0.5
@@ -234,6 +240,13 @@ class ReplayMemory:
 
     def __len__(self):
         return len(self.values)
+
+
+loss_history_actor = []
+loss_history_critic = []
+model_name = 'FALCON'
+#def get_epsilon(self, t):
+#    return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
 def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
 
     #Qval = Qval.detach().numpy()[0, 0]
@@ -251,14 +264,20 @@ def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
     advantage = Qvals - values
     actor_loss = (-log_probs * advantage).mean()
     critic_loss = 0.5 * advantage.pow(2).mean()
-    ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
+    ac_loss = actor_loss + critic_loss #+ entropy_term # learning_rate *
+    loss_history_actor.append(actor_loss.detach().numpy())
+    loss_history_critic.append(critic_loss.detach().numpy())
 
     return ac_loss
 def main():
+    np.random.seed(42)
+    torch.manual_seed(42)
     num_inputs = S_INFO
     num_outputs = A_DIM
     max_steps = 100000000
-    log_dir = Path(datetime.now().strftime('runs/%Y%m%d_%H_%M_%S'))
+
+    run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}"
+    log_dir = Path("runs/"+run_id)
     log_dir.mkdir(parents=True)
 
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
@@ -272,6 +291,7 @@ def main():
     all_rewards = []
     states = []
     loss_history = []
+
     #entropy_term = 0
     total_steps = 0
 
@@ -297,7 +317,13 @@ def main():
                 #print(value)
                 dist = policy_dist.detach().numpy()
 
-                action = np.random.choice(num_outputs, p=np.squeeze(dist))
+                sample = random.random()
+                eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+                                math.exp(-1. * total_steps / EPS_DECAY)
+                if sample > eps_threshold:
+                    action = np.random.choice(num_outputs, p=np.squeeze(dist))
+                else:
+                    action = env.action_space.sample()
 
                 new_state, reward, done, info = env.step(action)
                 state = new_state
@@ -321,10 +347,9 @@ def main():
                     ac_loss.backward()
                     ac_optimizer.step()
                     loss_history.append(ac_loss.detach().numpy())
-                    msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
+                    msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
                                                                                 np.mean(replay_memory.entropy_term))
                     logger.debug(msg)
-
 
                 total_steps += 1
 
@@ -346,8 +371,13 @@ def main():
     np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
     np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
     plt.plot(moving_average(replay_memory.rewards, 10))
+    plt.title(f'Reward {run_id}')
     plt.show()
-    plt.plot(moving_average(loss_history, 10))
+    plt.plot(moving_average(loss_history, 1))
+    plt.yscale('log')
+    plt.title(f'Loss {run_id}')
+    plt.plot(moving_average(loss_history_critic, 1))
+    plt.plot(moving_average(loss_history_actor, 1))
     plt.show()
     env.close()
 
