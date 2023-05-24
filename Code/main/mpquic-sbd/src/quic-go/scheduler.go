@@ -13,8 +13,8 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/wire"
 )
 
-//var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000)
-var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.5 * float64(time.Second)).Milliseconds()
+//var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000) #0.5
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.25 * float64(time.Second)).Milliseconds()
 
 //var publisher *ZPublisher
 
@@ -40,9 +40,11 @@ func openLogFile(path string) (*os.File, error) {
 	return logFile, nil
 }
 
-func (sch *scheduler) setup() {
+func (sch *scheduler) setup(s *session) {
 	sch.quotas = make(map[protocol.PathID]uint)
-	sch.scheduleToMultiplePaths()
+	if !s.config.IgnoreRLScheduler {
+		sch.scheduleToMultiplePaths()
+	}
 	sch.lastScheduled = time.Now()
 	sch.rlAction = make(chan int, 50)
 	sch.maxAction = 5
@@ -131,7 +133,7 @@ func (sch *scheduler) getRetransmission(s *session) (hasRetransmission bool, ret
 
 func (sch *scheduler) selectPathRoundRobin(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
 	if sch.quotas == nil {
-		sch.setup()
+		sch.setup(s)
 	}
 
 	// XXX Avoid using PathID 0 if there is more than 1 path
@@ -403,13 +405,13 @@ pathLoop:
 	for pathID, pth := range s.paths {
 
 		if !pth.SendingAllowed() {
-			utils.Infof("pth.SendingAllowed() == false")
+			//utils.Infof("pth.SendingAllowed() == false")
 			continue pathLoop
 		}
 
 		// If this path is potentially failed, do not consider it for sending
 		if pth.potentiallyFailed.Get() {
-			utils.Infof("pth.potentiallyFailed == true")
+			//utils.Infof("pth.potentiallyFailed == true")
 			continue pathLoop
 		}
 
@@ -421,9 +423,9 @@ pathLoop:
 	}
 
 	if len(avalPaths) < 2 {
-		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
+		//utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
 		//return s.paths[avalPaths[0].pathID]
-		return selectedPath
+		return nil
 	}
 	//s.pathsLock.Unlock()
 
@@ -464,7 +466,12 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
 	} else if sch.rlactionActive >= 1 && sch.rlactionActive <= sch.maxAction {
 		prob1 := float32(sch.rlactionActive-1) / float32(sch.maxAction-1)
-		return sch.propabilisticScheduler(s, hasRetransmission, prob1, 1-prob1)
+		path := sch.propabilisticScheduler(s, hasRetransmission, prob1, 1-prob1)
+		if path == nil {
+			return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
+		} else {
+			return path
+		}
 	}
 	return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
 }

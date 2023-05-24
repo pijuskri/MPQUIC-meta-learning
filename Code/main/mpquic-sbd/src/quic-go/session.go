@@ -228,7 +228,7 @@ func (s *session) setup(
 	)
 
 	s.scheduler = &scheduler{}
-	s.scheduler.setup()
+	s.scheduler.setup(s)
 
 	if pconnMgr == nil && conn != nil {
 		// XXX ONLY VALID FOR BENCHMARK!
