@@ -10,6 +10,7 @@ import torch
 from avalanche_rl.models.actor_critic import ActorCriticMLP
 from matplotlib import pyplot as plt
 from torch import optim
+import time
 
 from central_service.pytorch_models.metaModel import ActorCritic
 from central_service.utils.data_transf import getTrainingVariables
@@ -281,10 +282,12 @@ def main():
     logger = config_logger('agent', './logs/agent.log')
     logger.info("Run Agent until training stops...")
 
+    start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
         for episode in range(1):
             state = env.reset()
+            start_time = time.time()
             print("Episode ", episode)
             #TODO handle max steps
             for step in range(max_steps):
@@ -339,7 +342,7 @@ def main():
             #                                                            entropy_term)
             #logger.debug(msg)
             logger.debug("====")
-
+    end_time = time.time()
     np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
     np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
     plt.plot(moving_average(replay_memory.rewards, 10))
@@ -347,6 +350,8 @@ def main():
     plt.plot(moving_average(loss_history, 10))
     plt.show()
     env.close()
+
+    print("steps/",total_steps/(end_time-start_time))
 
 #def moving_average(a, n=3):
 #    ret = np.cumsum(a, dtype=float)

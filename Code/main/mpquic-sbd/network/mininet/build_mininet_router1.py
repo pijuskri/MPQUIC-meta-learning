@@ -173,7 +173,8 @@ def run():
     net[ 'r4' ].cmd("ifconfig r4-eth2 10.0.8.1/24")    
     net[ 'r4' ].cmd("route add default gw 10.0.0.5")
     net[ 'r4' ].cmd("route add -net 10.0.2.0 netmask 255.255.255.0 gw 10.0.0.14")
-    net[ 'r4' ].cmd("tc qdisc add dev r4-eth0 root netem limit 1000 delay {0}ms rate {1}Mbit".format(lte_latency, lte_bandwith))
+    #net[ 'r4' ].cmd("tc qdisc add dev r4-eth0 root netem limit 1000 delay {0}ms rate {1}Mbit".format(lte_latency, lte_bandwith))
+    net['r4'].cmd("tc qdisc add dev r4-eth0 root netem limit 1000 delay {0}ms rate {1}Mbit loss {2:.1f}%".format(wifi_latency,wifi_bandwith,wifi_loss))
 
     #configuration r5
     net[ 'r5' ].cmd("ifconfig r5-eth0 10.0.0.10/30")    
@@ -297,8 +298,8 @@ def run():
         loss = float(row[2])
         print("band {0}, latency {1}, loss {2}".format(band, latency, loss))
         #print(datetime.now())
-        net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
-        net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band,loss))
+        #net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
+        #net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band,loss))
         #print("=======LTE printed=========")
 
         #"tc qdisc change dev eth1 root netem delay 80ms 10ms"
@@ -310,12 +311,19 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 5 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 10 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
         print(cmd)
-        net[ 'client' ].cmd(cmd + "& " + cmd + "& wait")
+        clients_parallel = 10
+        #net['client'].cmd(cmd)
+        parallel_cmd = ""
+        for i in range(clients_parallel):
+            parallel_cmd += cmd + "& sleep 1 && "
+        parallel_cmd += "wait"
+        net['client'].cmd(parallel_cmd)
+        #net[ 'client' ].cmd(cmd + "& " + cmd + "& wait")
 
     net['server'].cmd("kill -9 {0}".format(server_pid))
     trace_runner.stop()

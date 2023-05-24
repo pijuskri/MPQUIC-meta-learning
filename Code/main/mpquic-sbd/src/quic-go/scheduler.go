@@ -474,7 +474,7 @@ func (sch *scheduler) selectPath(s *session, hasRetransmission bool, hasStreamRe
 	// XXX Currently round-robin
 	//_todo select the right scheduler dynamically
 	//return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)
-	log.Printf("IgnoreRLScheduler: %d\n", s.config.IgnoreRLScheduler)
+	//log.Printf("IgnoreRLScheduler: %d\n", s.config.IgnoreRLScheduler)
 	if !s.config.IgnoreRLScheduler {
 		return sch.selectPathSmart(s, hasRetransmission, hasStreamRetransmission, fromPth)
 	} else {

@@ -31,6 +31,7 @@ videos
 	
 make sure models use propabilistic action picking and not argmax
 Make sure models have random seed set
+make model do exploration
 
 use trace data
 	-process traces
