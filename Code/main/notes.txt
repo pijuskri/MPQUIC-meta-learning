@@ -137,6 +137,7 @@ seems other people simply provide very high quality video to cause full use of b
 
 modifed NETFLIX_BUFFER_SIZE = 5 in config_dash.py
 kill $(lsof -t -i:6633)
+https://github.com/intrig-unicamp/mininet-wifi/issues/96
 
 #05/24
 issue with multithreading and zmq, used mutex lock so schedule rl is not called at the same time by multiple threads
@@ -150,3 +151,5 @@ when frequency of calling model is below 100ms, there can be multithreading issu
 https://github.com/pytorch/examples/blob/main/reinforcement_learning/actor_critic.py
 https://github.com/yc930401/Actor-Critic-pytorch/blob/master/Actor-Critic.py
 changing model loss to look like these
+
+to install numpy, get wheel, rename to cv_py-0.1.0-cp38-cp38-linux_x86_64.whl (important part is manylinux to linux)

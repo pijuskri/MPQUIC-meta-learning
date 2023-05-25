@@ -28,8 +28,8 @@ PATH_DIR = "/Workspace/mpquic-sbd/"
 USER='mininet'
 
 
-wifi_bandwith = 5#15#1.5
-wifi_latency = 10
+wifi_bandwith = 15#15#1.5
+wifi_latency = 30 #10
 wifi_loss = 0.1
 lte_bandwith = 3
 lte_latency = 30
@@ -300,7 +300,7 @@ def run():
         loss = float(row[2])
         print("band {0}, latency {1}, loss {2}".format(band, latency, loss))
         #print(datetime.now())
-        #net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
+        net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
         #net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band,loss))
         #print("=======LTE printed=========")
 
@@ -313,12 +313,12 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 20 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 80 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
         print(cmd)
-        clients_parallel = 5
+        clients_parallel = 1
         #net['client'].cmd(cmd)
         parallel_cmd = ""
         for i in range(clients_parallel):

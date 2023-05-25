@@ -34,18 +34,18 @@ videos
 -do not wait for zero path failures
 
 make sure models use propabilistic action picking and not argmax
-
-
-
-use trace data
+-use trace data
 	-process traces
 	-make sure traces are long enough
 	-read csv file and apply it to connections in mininet
 	-provide bandwidth to scheduler
 	
-videos
-	make it into 2 second segments
-	add higher bitrates
+-videos
+	-make it into 2 second segments
+	-add higher bitrates
+-fix concurency in scheduler
+
+
 	
 implement trace picking in environement
 	use 2 traces for a mobile test
@@ -55,7 +55,7 @@ finish falcon
 	save model
 	train offline models
 	
--fix concurency in scheduler
+
 implement LSTM model
 make sure continual training works
 make storage for runs

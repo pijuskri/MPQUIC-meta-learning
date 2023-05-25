@@ -132,6 +132,7 @@ class NetworkEnv(gym.Env):
         env.start()
         time.sleep(10)
 
+
         # keep record of threads and processes
         self.tp_list = [self.rhandler, self.collector, env]
 
@@ -141,6 +142,7 @@ class NetworkEnv(gym.Env):
         #THESE SHOULD BE RESET EACH EPISODE
         self.request = None
         self.previous_reward = None
+        self.segment_rewards = []
 
     def get_net_state(self) -> NetworkState:
         path1_smoothed_RTT, path1_bandwidth, path1_packets, \
@@ -214,7 +216,7 @@ class NetworkEnv(gym.Env):
         #        self._agent_location - self._target_location, ord=1
         #    )
         #}
-        return {}
+        return self.segment_rewards
 
     def reward_old(self, action, completed):
         action_vec = np.zeros(A_DIM)
@@ -258,6 +260,7 @@ class NetworkEnv(gym.Env):
             #if self.previous_reward is not None:
             #    return self.previous_reward
             return 0
+        self.segment_rewards.append(res)
 
         bandwidth = res["bandwidth"] / 1048576
         bitrate = res['bitrate']/ 1048576 #MB
@@ -304,7 +307,7 @@ class NetworkEnv(gym.Env):
         print("reset")
 
         super().reset(seed=seed)
-
+        self.segment_rewards = []
 
         info = self._get_info()
 

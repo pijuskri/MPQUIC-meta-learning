@@ -26,7 +26,7 @@ max_episodes = 3000
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
+    def __init__(self, num_inputs, num_actions, hidden_size):
         super(ActorCritic, self).__init__()
 
         self.num_actions = num_actions

@@ -319,7 +319,7 @@ pathLoop:
 
 	if len(avalPaths) < 2 {
 		utils.Infof("AVAILPATHS < 2: %d", len(avalPaths))
-		sch.rlAction <- 0
+		//sch.rlAction <- 0
 		return
 	}
 	//s.pathsLock.Unlock()

@@ -12,6 +12,7 @@ from avalanche_rl.models.actor_critic import ActorCriticMLP
 from matplotlib import pyplot as plt
 from torch import optim
 import time
+import pandas as pd
 
 from central_service.pytorch_models.metaModel import ActorCritic
 from central_service.utils.data_transf import getTrainingVariables
@@ -24,11 +25,12 @@ from pathlib import Path
 from central_service.variables import A_DIM, S_INFO
 
 TRAINING = True #if true, store model after done, have high exploration
+MODE = 'train' if TRAINING else 'test'
 
 # hyperparameters
 hidden_size = 256
 learning_rate = 0.005#3e-4
-apply_loss_steps = 50
+apply_loss_steps = 25
 
 GAMMA = 0.99
 EPS_START = 0.3 #0.9
@@ -278,7 +280,7 @@ def main():
     num_outputs = A_DIM
     max_steps = 100000000
 
-    run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}"
+    run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}_{MODE}"
     log_dir = Path("runs/"+run_id)
     log_dir.mkdir(parents=True)
 
@@ -297,7 +299,7 @@ def main():
     #entropy_term = 0
     total_steps = 0
 
-    env = gym.make('NetworkEnv')
+    env: NetworkEnv = gym.make('NetworkEnv')
     memory = FalconMemory()
     replay_memory = ReplayMemory()
 
@@ -310,6 +312,7 @@ def main():
         for episode in range(1):
             state = env.reset()
             start_time = time.time()
+            reward_info = None
             print("Episode ", episode)
             #TODO handle max steps
             for step in range(max_steps):
@@ -327,19 +330,21 @@ def main():
                 else:
                     action = env.action_space.sample()
 
-                new_state, reward, done, info = env.step(action)
+                new_state, reward, done, reward_info = env.step(action)
                 state = new_state
+                states.append(state)
 
                 replay_memory.update_memory(action, value, policy_dist, reward)
 
-                change = memory.add_obs(state, actor_critic.state_dict())
-                #if change:
-                #    found = memory.findModel(state)
-                #    if found is not None:
-                #        actor_critic.load_state_dict(found)
-                #    else: actor_critic.reset()
-                #    replay_memory.clear()
-                states.append(state)
+                if model_name == 'FALCON':
+                    change = memory.add_obs(state, actor_critic.state_dict())
+                    #if change:
+                    #    found = memory.findModel(state)
+                    #    if found is not None:
+                    #        actor_critic.load_state_dict(found)
+                    #    else: actor_critic.reset()
+                    #    replay_memory.clear()
+
 
                 #TODO make sure replay memory loss is used for previous model after change reset
                 if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
@@ -370,18 +375,31 @@ def main():
             #logger.debug(msg)
             logger.debug("====")
     end_time = time.time()
+
+    loss_history = np.array(loss_history)
     np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
-    np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
+    np.savetxt(log_dir / "loss.csv", loss_history, delimiter=", ", fmt='% s')
     np.savetxt(log_dir / "states.csv", np.array(states), delimiter=", ", fmt='% s')
-    plt.plot(moving_average(replay_memory.rewards, 30))
+    segment_rewards = pd.DataFrame(env.segment_rewards)
+    segment_rewards.to_csv(log_dir / "segments.csv")
+    plt.plot(moving_average([x for x in replay_memory.rewards if x > 0], 20))
     plt.title(f'Reward {run_id}')
+    plt.savefig(log_dir / "reward.png")
     plt.show()
-    plt.plot(moving_average(loss_history, 3))
+
+    segment_rewards.plot(y='qoe')
+    plt.savefig(log_dir / "qoe.png")
+    plt.show()
+
+    plt.plot(moving_average(loss_history, 2))
+    #plt.plot(loss_history)
     #plt.yscale('log')
-    plt.yscale('log')
+    #plt.yscale('log')
+    plt.ylim(-1, np.max(loss_history)+1)
     plt.title(f'Loss {run_id}')
     #plt.plot(moving_average(loss_history_critic, 1))
     #plt.plot(moving_average(loss_history_actor, 1))
+    plt.savefig(log_dir / "loss.png")
     plt.show()
     env.close()
 
