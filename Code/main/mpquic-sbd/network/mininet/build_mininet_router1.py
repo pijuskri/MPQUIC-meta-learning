@@ -11,7 +11,7 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.util import dumpNodeConnections
 from datetime import datetime
-#import subprocess
+import subprocess
 
 import argparse
 from threading import Timer
@@ -141,7 +141,9 @@ def run():
     "Test linux router"
     topo = NetworkTopo()
 
-    #subprocess.run("kill $(lsof - t - i:6633)")
+    #subprocess.run("kill $(lsof -t - i:6633)")
+    subprocess.call("""sudo fuser -k 6653/tcp""", shell=True)
+    subprocess.call("kill $(lsof -t -i:6633)", shell=True)
     net = Mininet( topo=topo)  # controller is used by s1-s3
     net.start()
 
@@ -311,16 +313,17 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 20 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
         print(cmd)
-        clients_parallel = 1
+        clients_parallel = 5
         #net['client'].cmd(cmd)
         parallel_cmd = ""
         for i in range(clients_parallel):
-            parallel_cmd += cmd + "& sleep 1 && "
+            parallel_cmd += "( sleep {0} ; ".format(i+1) + cmd + " ) &"
+            #parallel_cmd += cmd + "& sleep {0} && ".format(i+1)
         parallel_cmd += "wait"
         net['client'].cmd(parallel_cmd)
         #net[ 'client' ].cmd(cmd + "& " + cmd + "& wait")
