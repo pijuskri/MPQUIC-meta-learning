@@ -146,3 +146,7 @@ based on quic notes on max tcp congestion window, there can be 3.5MB in flight. 
 
 #05/25
 when frequency of calling model is below 100ms, there can be multithreading issues with zclient. Added a mutex lock
+
+https://github.com/pytorch/examples/blob/main/reinforcement_learning/actor_critic.py
+https://github.com/yc930401/Actor-Critic-pytorch/blob/master/Actor-Critic.py
+changing model loss to look like these

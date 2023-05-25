@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/lucas-clemente/quic-go/internal/protocol"
@@ -23,6 +24,7 @@ type ZClient struct {
 	socket   *zmq.Socket
 	poller   *zmq.Poller
 	sequence uint64
+	mu       sync.Mutex
 }
 
 // Bandwidth same as bandwidth.go
@@ -102,11 +104,16 @@ func (client *ZClient) Response() (response *Response, err error) {
 
 	for time.Now().Before(endtime) {
 		polled, err := client.poller.Poll(endtime.Sub(time.Now()))
-		if err == nil && len(polled) > 0 {
+	retry_receive:
+		if err == nil && len(polled) > 0 && time.Now().Before(endtime) {
+			var r_err error
 			// reply
-			reply, _ = client.socket.RecvMessage(0)
+			reply, r_err = client.socket.RecvMessage(0)
+			_ = r_err
 			if len(reply) != 2 {
-				panic("len(reply) != 2")
+				goto retry_receive
+				//continue //ignore issue instead of crashing everything
+				//panic("len(reply) != 2")
 			}
 
 			cstrID, _ := strconv.ParseUint(reply[0], 10, 8) // don't care about the error thug life

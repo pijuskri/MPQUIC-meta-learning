@@ -14,9 +14,21 @@ import (
 )
 
 //var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration.Milliseconds(2000) #0.5
-var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.1 * float64(time.Second)).Milliseconds()
+var SMART_SCHEDULER_UPDATE_INTERVAL = time.Duration(0.05 * float64(time.Second)).Milliseconds()
 var RLACTIONACTIVE = 0
-var LASTSCHEDULED time.Time
+
+type time_keep struct {
+	mu  sync.Mutex
+	val time.Time
+}
+
+var LASTSCHEDULED *time_keep
+
+func init() {
+	// use package init to make sure path is always instantiated
+	LASTSCHEDULED = new(time_keep)
+	LASTSCHEDULED.val = time.Now()
+}
 
 //var publisher *ZPublisher
 
@@ -65,8 +77,10 @@ func (sch *scheduler) setup(s *session) {
 	log.SetOutput(file)
 	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds)
 
-	log.Println("log file created")
-	log.Printf("SMART_SCHEDULER_UPDATE_INTERVAL: %d\n", SMART_SCHEDULER_UPDATE_INTERVAL)
+	//log.Println("log file created")
+	log.Println("Starting scheduling")
+	log.Printf("IgnoreRLScheduler: %d\n", s.config.IgnoreRLScheduler)
+	//log.Printf("SMART_SCHEDULER_UPDATE_INTERVAL: %d\n", SMART_SCHEDULER_UPDATE_INTERVAL)
 }
 
 //Pijus
@@ -267,7 +281,7 @@ pathLoop:
 	return selectedPath
 }
 
-func (sch *scheduler) choosePathsRL(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) {
+func (sch *scheduler) choosePathsRL(s *session) {
 
 	var avalPaths []*path
 
@@ -343,20 +357,22 @@ pathLoop:
 		Path2:       pathStats[1]}
 
 	// utils.Infof("Request %d %s %s", request.ID, request.Path1.PathID, request.Path2.PathID)
-	log.Printf("Scheduler request sending to model")
+	//log.Printf("Scheduler request sending to model")
 
+	sch.mu.Lock()
 	reqErr := sch.zclient.Request(request)
 	if reqErr != nil {
 		utils.Errorf("Error in Request\n")
 		utils.Errorf(reqErr.Error())
 	}
 
-	log.Printf("Listening for model response")
+	//log.Printf("Listening for model response")
 	response, err := sch.zclient.Response()
 	if err != nil {
 		utils.Errorf("Error in Response\n")
 		utils.Errorf(err.Error())
 	}
+	sch.mu.Unlock()
 
 	//_ = response
 
@@ -370,7 +386,7 @@ pathLoop:
 	elapsed := time.Since(start)
 	// utils.Infof("ZClient Response.ID: %d, Response.PathID: %d\n", response.ID, response.PathID)
 	utils.Infof("Communication overhead %s", elapsed)
-	log.Printf("Communication overhead %s\n", elapsed)
+	//log.Printf("Communication overhead %s\n", elapsed)
 	//-----------------------------------------------------------------------------------------
 
 	// assign all volume to specified agent path
@@ -450,23 +466,26 @@ pathLoop:
 }
 
 func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStreamRetransmission bool, fromPth *path) *path {
-	elapsed := time.Since(LASTSCHEDULED).Milliseconds()
+
 	select {
 	case msg := <-sch.rlAction:
 		//sch.rlactionActive = msg
 		RLACTIONACTIVE = msg
 		//log.Printf("RL action received")
-		log.Printf("RL action received: %d", msg)
+		utils.Infof("RL action received: %d", msg)
 	default:
 
 	}
 
+	LASTSCHEDULED.mu.Lock()
+	elapsed := time.Since(LASTSCHEDULED.val).Milliseconds()
 	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
 		//sch.lastScheduled = time.Now()
-		LASTSCHEDULED = time.Now()
-		go sch.choosePathsRL(s, hasRetransmission, hasStreamRetransmission, fromPth)
-
+		LASTSCHEDULED.val = time.Now()
+		go sch.choosePathsRL(s)
 	}
+	LASTSCHEDULED.mu.Unlock()
+
 	action := RLACTIONACTIVE
 	if action == 0 {
 		return sch.selectPathLowLatency(s, hasRetransmission, hasStreamRetransmission, fromPth)

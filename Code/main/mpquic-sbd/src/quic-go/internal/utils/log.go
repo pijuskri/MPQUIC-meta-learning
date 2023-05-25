@@ -77,7 +77,7 @@ func Debug() bool {
 
 func init() {
 	readLoggingEnv()
-	logLevel = LogLevelInfo
+	logLevel = LogLevelError
 	file, err := openLogFile("/home/mininet/Workspace/mpquic-sbd/quic.log")
 	if err != nil {
 		log.Fatal(err)
