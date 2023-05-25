@@ -27,7 +27,7 @@ TRAINING = True #if true, store model after done, have high exploration
 
 # hyperparameters
 hidden_size = 256
-learning_rate = 0.01#3e-4
+learning_rate = 0.005#3e-4
 apply_loss_steps = 50
 
 GAMMA = 0.99
@@ -250,19 +250,21 @@ model_name = 'FALCON'
 def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
 
     #Qval = Qval.detach().numpy()[0, 0]
-    Qvals = np.zeros_like(values)
+    values = torch.cat(values)
+    Qvals = torch.zeros_like(values) #np.zeros_like(values.detach().numpy())
+    #values = values.detach()
 
     for t in reversed(range(len(rewards))):
         Qval = rewards[t] + GAMMA * Qval
         Qvals[t] = Qval
 
     # update actor critic
-    values = torch.FloatTensor(values)
-    Qvals = torch.FloatTensor(Qvals)
+    #values = torch.FloatTensor(values)
+    Qvals = torch.FloatTensor(Qvals).detach()
     log_probs = torch.stack(log_probs)
 
     advantage = Qvals - values
-    actor_loss = (-log_probs * advantage).mean()
+    actor_loss = (-log_probs * advantage.detach()).mean()
     critic_loss = 0.5 * advantage.pow(2).mean()
     ac_loss = actor_loss + critic_loss #+ entropy_term # learning_rate *
     loss_history_actor.append(actor_loss.detach().numpy())
@@ -313,7 +315,7 @@ def main():
             for step in range(max_steps):
 
                 value, policy_dist = actor_critic.forward(torch.Tensor(state))
-                value = value.detach().numpy()[0, 0]#[0, 0]
+                #value = value.detach().numpy()[0, 0]#[0, 0]
                 #print(value)
                 dist = policy_dist.detach().numpy()
 
@@ -370,11 +372,13 @@ def main():
     end_time = time.time()
     np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
     np.savetxt(log_dir / "loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
-    plt.plot(moving_average(replay_memory.rewards, 10))
+    np.savetxt(log_dir / "states.csv", np.array(states), delimiter=", ", fmt='% s')
+    plt.plot(moving_average(replay_memory.rewards, 30))
     plt.title(f'Reward {run_id}')
     plt.show()
     plt.plot(moving_average(loss_history, 3))
     #plt.yscale('log')
+    plt.yscale('log')
     plt.title(f'Loss {run_id}')
     #plt.plot(moving_average(loss_history_critic, 1))
     #plt.plot(moving_average(loss_history_actor, 1))

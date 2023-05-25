@@ -39,18 +39,27 @@ make sure models use propabilistic action picking and not argmax
 
 use trace data
 	-process traces
-	make sure traces are long enough
+	-make sure traces are long enough
 	-read csv file and apply it to connections in mininet
 	-provide bandwidth to scheduler
+	
+videos
+	make it into 2 second segments
+	add higher bitrates
+	
+implement trace picking in environement
+	use 2 traces for a mobile test
+	do train-test split
 
 finish falcon
 	save model
 	train offline models
+	
+-fix concurency in scheduler
 implement LSTM model
+make sure continual training works
 make storage for runs
-implement trace picking in environement
-	use 2 traces for a mobile test
-	do train-test split
+
 
 
 

@@ -135,5 +135,14 @@ the vm is absolutely cursed, installing packages with python does not work.
 #05/23
 seems other people simply provide very high quality video to cause full use of bandwith, gonna do that too probably. (https://ieeexplore-ieee-org.proxy.uba.uva.nl/document/7546928)
 
-modifed NETFLIX_BUFFER_SIZE = 10 in config_dash.py
+modifed NETFLIX_BUFFER_SIZE = 5 in config_dash.py
 kill $(lsof -t -i:6633)
+
+#05/24
+issue with multithreading and zmq, used mutex lock so schedule rl is not called at the same time by multiple threads
+ https://stackoverflow.com/questions/50872929/declare-mutex-variable-in-package-level-is-good-practice
+ 
+based on quic notes on max tcp congestion window, there can be 3.5MB in flight. Meaning with an RTT of 100ms a max bandwith of 35MB/s
+
+#05/25
+when frequency of calling model is below 100ms, there can be multithreading issues with zclient. Added a mutex lock
