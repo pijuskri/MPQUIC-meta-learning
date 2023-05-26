@@ -8,6 +8,10 @@ import time
 import json
 import os
 import random
+from os import listdir
+from os.path import isfile, join
+from itertools import combinations
+import itertools
 
 import pexpect
 from pexpect.popen_spawn import PopenSpawn
@@ -143,7 +147,7 @@ class Session:
 
 
 class Environment:
-    def __init__(self, bdw_paths, logger, mconfig, remoteHostname=REMOTE_HOST, remotePort=REMOTE_PORT):
+    def __init__(self, bdw_paths, logger, mconfig, remoteHostname=REMOTE_HOST, remotePort=REMOTE_PORT, mode='test'):
         self._totalRuns = 0
         self._logger = logger
 
@@ -160,6 +164,36 @@ class Environment:
         self._remotePort = remotePort
         #self.stop_middleware()
         self.spawn_middleware()
+
+        self.traces = []
+        self.traces_train: list[tuple[str, str]] = []
+        self.traces_test: list[tuple[str, str]] = []
+        self.current_trace_pair = []
+        self.mode = mode
+        self.get_traces()
+
+    def get_traces(self):
+        random.seed(42)
+        trace_pairs: list[tuple[str, str]] = []
+        root = "../../mpquic-sbd/network/mininet/processed/"
+        self.traces = ["/home/mininet/Workspace/mpquic-sbd/network/mininet/processed/" + f for f in listdir(root) if isfile(join(root, f))]
+        self.traces.sort()
+
+        for trace in self.traces:
+            if "static" in trace:
+                trace_pairs.append((trace, 'wifi'))
+        mobile = [t for t in self.traces if 'car' in t]
+        trace_pairs = trace_pairs + list(itertools.combinations(mobile, r=2))
+        random.shuffle(trace_pairs)
+
+        for trace in trace_pairs:
+            if random.random() > 0.2: #0.4 for equal size
+                self.traces_train.append(trace)
+            else:
+                self.traces_test.append(trace)
+        print(f"train_len: {len(self.traces_train)}")
+        print(f"test_len: {len(self.traces_test)}")
+        #print(self.traces_train)
 
     def spawn_cmd(self):
         return "stdbuf -i0 -o0 -e0 {} -sv {} -cl {} -pub {} -sub {}".format(MIDDLEWARE_BIN_REMOTE_PATH,
@@ -216,31 +250,41 @@ class Environment:
         ''' One step update. 
             First load current values, then move to next!
         '''
-        topo = [self.session.getCurrentTopo()]
-        self.curr_topo = self.getNetemToTuple(topo)
-        self.curr_graph = self.session.getCurrentGraph()
-
-        bdw_path1, bdw_path2 = self.session.getCurrentBandwidth()
-        self.bdw_paths[0] = bdw_path1
-        self.bdw_paths[1] = bdw_path2
-
-        return self.session.nextRun()
-        
+        #topo = [self.session.getCurrentTopo()]
+        #self.curr_topo = self.getNetemToTuple(topo)
+        #self.curr_graph = self.session.getCurrentGraph()
+#
+        #bdw_path1, bdw_path2 = self.session.getCurrentBandwidth()
+        #self.bdw_paths[0] = bdw_path1
+        #self.bdw_paths[1] = bdw_path2
+#
+        #return self.session.nextRun()
+        if self.mode == 'train':
+            if self._totalRuns < len(self.traces_train):
+                self.current_trace_pair = self.traces_train[self._totalRuns]
+                return self._totalRuns
+        if self.mode == 'test':
+            if self._totalRuns < len(self.traces_test):
+                self.current_trace_pair = self.traces_test[self._totalRuns]
+                return self._totalRuns
+        return -1
     def run(self):
         self._totalRuns += 1
         message = "Run Number: {}, Graph: {}" 
         self._logger.info(message.format(self._totalRuns, self.curr_graph))
         #time.sleep(10)
         print('sbd called')
-        self.test_sbd_run()
-    def test_sbd_run(self):
+        self.sbd_run()
+    def sbd_run(self):
         #launchTests(self.curr_topo, self.curr_graph)
         #cmd = ["ssh", "-p", self._remotePort, self._remoteHostname,
         #       "\"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1_old.py -nm 2 -p 'basic' >> ~/Workspace/mpquic-sbd/test_log.txt\""]
-        cmd = self.ssh("sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'netflix' 2>&1 | tee ~/Workspace/mpquic-sbd/test_log.txt") #
+        tf = self.current_trace_pair[0]
+        tf2 = self.current_trace_pair[1]
+        cmd = self.ssh(f"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'netflix' -tf {tf} -tf2 {tf2} 2>&1 | tee ~/Workspace/mpquic-sbd/test_log.txt") #
         print(cmd)
         f = open("logs/sbd_log.txt", "a")
-        child = PopenSpawn(cmd, timeout=120, logfile=f)
+        child = PopenSpawn(cmd, timeout=900, logfile=f)
         print('launched sbd test')
         #child.expect("*** Creating network")
         #time.sleep(10)

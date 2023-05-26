@@ -40,6 +40,8 @@ type scheduler struct {
 	zclient        *ZClient
 	lastScheduled  time.Time
 	rlAction       chan int
+	rlFailedChan   chan int
+	rlFailed       bool
 	rlactionActive int
 	maxAction      int
 	s1             rand.Source
@@ -61,6 +63,7 @@ func (sch *scheduler) setup(s *session) {
 	}
 	sch.lastScheduled = time.Now()
 	sch.rlAction = make(chan int, 50)
+	sch.rlFailedChan = make(chan int, 50)
 	sch.maxAction = 5
 	sch.s1 = rand.NewSource(time.Now().UnixNano())
 	sch.r1 = rand.New(sch.s1)
@@ -364,6 +367,7 @@ pathLoop:
 	if reqErr != nil {
 		utils.Errorf("Error in Request\n")
 		utils.Errorf(reqErr.Error())
+		sch.rlFailedChan <- 0
 	}
 
 	//log.Printf("Listening for model response")
@@ -371,6 +375,7 @@ pathLoop:
 	if err != nil {
 		utils.Errorf("Error in Response\n")
 		utils.Errorf(err.Error())
+		sch.rlFailedChan <- 0
 	}
 	sch.mu.Unlock()
 
@@ -476,10 +481,19 @@ func (sch *scheduler) selectPathSmart(s *session, hasRetransmission bool, hasStr
 	default:
 
 	}
+	select {
+	case msg := <-sch.rlFailedChan:
+		//sch.rlactionActive = msg
+		_ = msg
+		sch.rlFailed = true
+		//log.Printf("RL action received")
+	default:
+
+	}
 
 	LASTSCHEDULED.mu.Lock()
 	elapsed := time.Since(LASTSCHEDULED.val).Milliseconds()
-	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL {
+	if elapsed > SMART_SCHEDULER_UPDATE_INTERVAL && !sch.rlFailed {
 		//sch.lastScheduled = time.Now()
 		LASTSCHEDULED.val = time.Now()
 		go sch.choosePathsRL(s)

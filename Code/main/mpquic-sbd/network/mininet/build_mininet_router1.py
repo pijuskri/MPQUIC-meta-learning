@@ -30,7 +30,7 @@ USER='mininet'
 
 wifi_bandwith = 15#15#1.5
 wifi_latency = 30 #10
-wifi_loss = 0.1
+wifi_loss = 0.7
 lte_bandwith = 3
 lte_latency = 30
 TC_QDISC_RATE = 100 #Mbit
@@ -285,40 +285,86 @@ def run():
     #print(file_out)
 
     #trace_df =  pd.read_csv(trace_file)
-    trace_df = []
-    import csv
-    with open(trace_file) as csvfile:
-        spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        for row in spamreader:
-            trace_df.append(row)
 
-    def set_lte_trace(idx, trace_df):
-        row = trace_df[idx + 1]
-        #band = (int(row[0]) / 100) + 50
-        band = int(row[0])
-        latency = int(row[1])
-        loss = float(row[2])
-        print("band {0}, latency {1}, loss {2}".format(band, latency, loss))
+    import csv
+
+    files= [trace_file, trace_file2]
+    print(files)
+    traces = []
+    for file in files:
+        trace_df = []
+        if file != 'wifi':
+            with open(file) as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+                for row in spamreader:
+                    trace_df.append(row)
+        else:
+            trace_df = 'wifi'
+        traces.append(trace_df)
+
+    def set_lte_trace(idx, traces):
+        for path_id, trace_df in enumerate(traces):
+            if trace_df != 'wifi':
+               row = trace_df[idx + 1]
+               #band = (int(row[0]) / 100) + 50
+               band = int(float(row[0]))
+               latency = int(row[1])
+               loss = float(row[2])
+            else:
+               band = wifi_bandwith * 1024 #to kbit from mbit
+               latency = wifi_latency
+               loss = wifi_loss
+            print("Path{3}: band {0}, latency {1}, loss {2}".format(band, latency, loss, path_id))
+            if path_id == 0:
+                net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency,band, loss))
+                net['r4'].cmd("tc qdisc change dev r4-eth1 root netem delay {0}ms rate {1:.2f}kbit".format(latency,band))
+            else:
+                net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
+                net['r2'].cmd("tc qdisc change dev r2-eth1 root netem delay {0}ms rate {1:.2f}kbit".format(latency, band))
+        #if trace_df != 'wifi':
+        #    row = trace_df[idx + 1]
+        #    #band = (int(row[0]) / 100) + 50
+        #    band = int(row[0])
+        #    latency = int(row[1])
+        #    loss = float(row[2])
+        #else:
+        #    band = wifi_bandwith
+        #    latency = wifi_latency
+        #    loss = wifi_loss
+
+        #if trace_df != 'wifi':
+        #    row = trace_df2[idx + 1]
+        #    #band = (int(row[0]) / 100) + 50
+        #    band2 = int(row[0])
+        #    latency2 = int(row[1])
+        #    loss2 = float(row[2])
+        #else:
+        #    band2 = wifi_bandwith
+        #    latency2 = wifi_latency
+        #    loss2 = wifi_loss
+
+
+        #print("Path{3}: band {0}, latency {1}, loss {2}".format(band2, latency2, loss2, idx))
         #print(datetime.now())
-        net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
-        #net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band,loss))
+        #net['r4'].cmd("tc qdisc change dev r4-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency, band, loss))
+        #net['r2'].cmd("tc qdisc change dev r2-eth0 root netem delay {0}ms rate {1:.2f}kbit loss {2:.1f}%".format(latency2, band2,loss2))
         #print("=======LTE printed=========")
 
         #"tc qdisc change dev eth1 root netem delay 80ms 10ms"
 
-    trace_runner = RepeatedTimer(1, set_lte_trace, trace_df)
+    trace_runner = RepeatedTimer(1, set_lte_trace, traces)
 
     for i in range(n_times):
         if download:
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 80 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
         print(cmd)
-        clients_parallel = 1
+        clients_parallel = 5
         #net['client'].cmd(cmd)
         parallel_cmd = ""
         for i in range(clients_parallel):
@@ -327,8 +373,11 @@ def run():
         parallel_cmd += "wait"
         net['client'].cmd(parallel_cmd)
         #net[ 'client' ].cmd(cmd + "& " + cmd + "& wait")
+    print("client done")
+
 
     net['server'].cmd("kill -9 {0}".format(server_pid))
+    print("killed caddy")
     trace_runner.stop()
     print('Finishing experiment')
 
@@ -379,6 +428,12 @@ if __name__ == '__main__':
                         default='/home/mininet/Workspace/mpquic-sbd/network/mininet/processed/car_174.csv',
                         help="Path to trace to use for the experiment")
 
+    parser.add_argument('--trace2', '-tf2',
+                        metavar='trace2',
+                        type=str,
+                        default='wifi',
+                        help="Path to trace to use for the experiment")
+
 
     # Execute the parse_args() method
     args                       = parser.parse_args()
@@ -388,6 +443,7 @@ if __name__ == '__main__':
     playback                   = args.playback
     n_times = args.times
     trace_file = args.trace
+    trace_file2 = args.trace2
 
     # if len(sys.argv) > 1:
     #     with_background = int(sys.argv[1])

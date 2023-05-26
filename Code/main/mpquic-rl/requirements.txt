@@ -48,3 +48,4 @@ avalanche-rl @ git+https://github.com/ContinualAI/avalanche-rl@main
 opencv-python
 ale-py
 gym==0.23.1 #needed for old versions
+tqdm

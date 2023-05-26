@@ -42,7 +42,7 @@ SSH_HOST = 'localhost'
 
 
 
-def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
+def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event, mode):
     rhostname = REMOTE_HOST  # 'mininet' + '@' + SSH_HOST
 
     config = {
@@ -53,7 +53,7 @@ def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
     }
     #'ipc:///tmp/pubsub'
     logger = config_logger('environment', filepath='../../central_service/logs/environment.log')
-    env = Environment(bdw_paths, logger=logger, mconfig=config, remoteHostname=rhostname)
+    env = Environment(bdw_paths, logger=logger, mconfig=config, remoteHostname=rhostname, mode=mode)
 
     # Lets measure env runs in time
     while not stop_env.is_set():
@@ -78,7 +78,7 @@ def environment(bdw_paths: mp.Array, stop_env: mp.Event, end_of_run: mp.Event):
                 logger.debug("Time to execute one run: {}s".format(diff))
 
                 end_of_run.set()  # set the end of run so our agent knows
-                stop_env.set() #run only once for now
+                #stop_env.set() #run only once for now
                 # env.spawn_middleware() # restart middleware
             except Exception as ex:
                 logger.error(ex)
@@ -100,7 +100,7 @@ class NetworkState:
 class NetworkEnv(gym.Env):
     metadata = {"render_modes": [], "render_fps": 4}
 
-    def __init__(self):
+    def __init__(self, mode='test'):
 
         self.observation_space = spaces.Box(0, 100, shape=(6,), dtype=np.float64)
 
@@ -128,7 +128,7 @@ class NetworkEnv(gym.Env):
         self.bdw_paths = mp.Array('i', 2)
         self.stop_env = mp.Event()
         self.end_of_run = mp.Event()
-        env = mp.Process(target=environment, args=(self.bdw_paths, self.stop_env, self.end_of_run))
+        env = mp.Process(target=environment, args=(self.bdw_paths, self.stop_env, self.end_of_run), kwargs={'mode':mode})
         env.start()
         time.sleep(10)
 
@@ -162,9 +162,13 @@ class NetworkEnv(gym.Env):
         #normalized_loss_path0 = ((path1_retransmissions + path1_losses) - 0.0) / 20.0
         #normalized_loss_path1 = ((path2_retransmissions + path2_losses) - 0.0) / 20.0
 
-        bdw_max = 100.0 * 1024 #convert from kb to mb
+        bdw_max = 25.0 * 1024 #convert from kb to mb
         rtt_max = 300.0
         max_loss = 100.0
+
+        #ensure not zero
+        path1_packets = max(1, path1_packets)
+        path2_packets = max(1, path2_packets)
 
         normalized_bwd_path0 = path1_bandwidth / bdw_max
         normalized_bwd_path1 = path2_bandwidth / bdw_max
@@ -257,8 +261,8 @@ class NetworkEnv(gym.Env):
         #    if not self.cqueue.empty():
         #        res = list(self.cqueue.queue)[-1]
         if res is None:
-            #if self.previous_reward is not None:
-            #    return self.previous_reward
+            if self.previous_reward is not None:
+                return self.previous_reward
             return 0
         self.segment_rewards.append(res)
 
@@ -308,6 +312,8 @@ class NetworkEnv(gym.Env):
 
         super().reset(seed=seed)
         self.segment_rewards = []
+        self.previous_reward = None
+        self.request = None
 
         info = self._get_info()
 

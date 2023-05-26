@@ -80,13 +80,26 @@ func (b *BDWStats) UpdateBDW(bdw Bandwidth) {
 		// if utils.Debug() {
 		// 	utils.Debugf("UpdateBDW In test: increased roundRobinIndex = %d", b.roundRobinIndex)
 		// }
+		sum := uint64(0)
+		count := uint64(0)
 		for i := uint8(0); i < size; i++ {
 			// if utils.Debug() {
 			// 	utils.Debugf("UpdateBDW In test: compareWindow = %d bps", b.compareWindow[i])
 			// }
-			if b.bandwidth < b.compareWindow[i] {
-				b.bandwidth = b.compareWindow[i]
+
+			//calculation for max
+			/*
+				if b.bandwidth < b.compareWindow[i] {
+					b.bandwidth = b.compareWindow[i]
+				}
+			*/
+			if b.compareWindow[i] > 0 {
+				count += 1
 			}
+			sum += uint64(b.compareWindow[i])
+		}
+		if count > 0 {
+			b.bandwidth = Bandwidth(sum / count)
 		}
 		// if utils.Debug() {
 		// 	utils.Debugf("UpdateBDW In test: sentDelta %d, sentDelay %s, fullbandwidth %d Mbps", sentDelta, sentDelay.String(), b.bandwidth/1048576)

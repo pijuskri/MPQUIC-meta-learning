@@ -51,6 +51,31 @@ class ActorCritic(nn.Module):
     def reset(self):
         self.apply(ActorCritic.init_weights)
 
+    def calc_a2c_loss(self, Qval, values, rewards, log_probs, entropy_term):
+
+        # Qval = Qval.detach().numpy()[0, 0]
+        values = torch.cat(values)
+        Qvals = torch.zeros_like(values)  # np.zeros_like(values.detach().numpy())
+        # values = values.detach()
+
+        for t in reversed(range(len(rewards))):
+            Qval = rewards[t] + GAMMA * Qval
+            Qvals[t] = Qval
+
+        # update actor critic
+        # values = torch.FloatTensor(values)
+        Qvals = torch.FloatTensor(Qvals).detach()
+        log_probs = torch.stack(log_probs)
+
+        advantage = Qvals - values
+        actor_loss = (-log_probs * advantage.detach()).mean()
+        critic_loss = 0.5 * advantage.pow(2).mean()
+        ac_loss = actor_loss + critic_loss #+ entropy_term # learning_rate *
+        #loss_history_actor.append(actor_loss.detach().numpy())
+        #loss_history_critic.append(critic_loss.detach().numpy())
+
+        return ac_loss
+
     @staticmethod
     def init_weights(m):
         if isinstance(m, nn.Embedding):

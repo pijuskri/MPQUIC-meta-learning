@@ -44,21 +44,25 @@ make sure models use propabilistic action picking and not argmax
 	-make it into 2 second segments
 	-add higher bitrates
 -fix concurency in scheduler
-
-
 	
-implement trace picking in environement
-	use 2 traces for a mobile test
-	do train-test split
+-implement trace picking in environement
+	-use 2 traces for a mobile test
+	-do train-test split
+-make storage for runs
+	
+	
+run minrtt on test data
 
 finish falcon
+	understand how interaction with meta models works
+	define meta model ranges
 	save model
 	train offline models
 	
 
 implement LSTM model
 make sure continual training works
-make storage for runs
+
 
 
 

@@ -51,7 +51,16 @@ class Collector(BasicThread):
                     json_data = json.loads(data[1])
                     #print(json_data)
                     self.pinfo(json_data)
-
+                    keys = ["segment_nr",
+                    "bandwidth",
+                    "bitrate",
+                    "down_shifts",
+                    "buffering_ratio",
+                    "initial_buffering",
+                    "stall_count",
+                    "stall_sum",
+                    "qoe"]
+                    json_data = {k: json_data[k] for k in keys}
                     self._all_streams.append(json_data)
                     
                     # put stream info on the Queue (blocking operation)

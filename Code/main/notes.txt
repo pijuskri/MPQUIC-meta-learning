@@ -153,3 +153,7 @@ https://github.com/yc930401/Actor-Critic-pytorch/blob/master/Actor-Critic.py
 changing model loss to look like these
 
 to install numpy, get wheel, rename to cv_py-0.1.0-cp38-cp38-linux_x86_64.whl (important part is manylinux to linux)
+
+#05/26
+reward delay (and sparsity) is a big limitation when dealing with qoe
+making reward not sparse anymore, report previous known bitrate.

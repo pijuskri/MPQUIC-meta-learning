@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from torch import optim
 import time
 import pandas as pd
+from tqdm import tqdm
 
 from central_service.pytorch_models.metaModel import ActorCritic
 from central_service.utils.data_transf import getTrainingVariables
@@ -24,6 +25,7 @@ from pathlib import Path
 
 from central_service.variables import A_DIM, S_INFO
 
+model_name = 'minrtt' #'FALCON'
 TRAINING = True #if true, store model after done, have high exploration
 MODE = 'train' if TRAINING else 'test'
 
@@ -33,7 +35,7 @@ learning_rate = 0.005#3e-4
 apply_loss_steps = 25
 
 GAMMA = 0.99
-EPS_START = 0.3 #0.9
+EPS_START = 0.05 #0.9
 EPS_END = 0.05
 EPS_DECAY = 1000 #higher = slower decay
 
@@ -246,46 +248,26 @@ class ReplayMemory:
 
 loss_history_actor = []
 loss_history_critic = []
-model_name = 'FALCON'
+
 #def get_epsilon(self, t):
 #    return max(self.epsilon_min, min(self.epsilon, 1.0 - math.log10((t + 1) * self.epsilon_decay)))
-def calc_a2c_loss(Qval, values, rewards, log_probs, entropy_term):
 
-    #Qval = Qval.detach().numpy()[0, 0]
-    values = torch.cat(values)
-    Qvals = torch.zeros_like(values) #np.zeros_like(values.detach().numpy())
-    #values = values.detach()
-
-    for t in reversed(range(len(rewards))):
-        Qval = rewards[t] + GAMMA * Qval
-        Qvals[t] = Qval
-
-    # update actor critic
-    #values = torch.FloatTensor(values)
-    Qvals = torch.FloatTensor(Qvals).detach()
-    log_probs = torch.stack(log_probs)
-
-    advantage = Qvals - values
-    actor_loss = (-log_probs * advantage.detach()).mean()
-    critic_loss = 0.5 * advantage.pow(2).mean()
-    ac_loss = actor_loss + critic_loss #+ entropy_term # learning_rate *
-    loss_history_actor.append(actor_loss.detach().numpy())
-    loss_history_critic.append(critic_loss.detach().numpy())
-
-    return ac_loss
 def main():
     np.random.seed(42)
     torch.manual_seed(42)
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 100000000
+    max_steps = 5000
 
     run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}_{MODE}"
     log_dir = Path("runs/"+run_id)
     log_dir.mkdir(parents=True)
 
+    print(f"RUNNING MODEL: {model_name}")
+    print(f"RUNNING MODE: {MODE}")
+
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
-    print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
+    #print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
     actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
     ac_optimizer = optim.Adam(actor_critic.parameters(), lr=learning_rate)
     print('model', actor_critic)
@@ -293,13 +275,12 @@ def main():
     all_lengths = []
     average_lengths = []
     all_rewards = []
-    states = []
-    loss_history = []
 
-    #entropy_term = 0
+
+    #
     total_steps = 0
 
-    env: NetworkEnv = gym.make('NetworkEnv')
+    env: NetworkEnv = gym.make('NetworkEnv', mode=MODE)
     memory = FalconMemory()
     replay_memory = ReplayMemory()
 
@@ -309,32 +290,41 @@ def main():
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(1):
+        for episode in range(3):
             state = env.reset()
+            entropy_term = 0
             start_time = time.time()
             reward_info = None
+            rewards = []
+            states = []
+            loss_history = []
+            #stop_env.set()
             print("Episode ", episode)
             #TODO handle max steps
-            for step in range(max_steps):
+            for step in tqdm(range(max_steps)):
 
-                value, policy_dist = actor_critic.forward(torch.Tensor(state))
-                #value = value.detach().numpy()[0, 0]#[0, 0]
-                #print(value)
-                dist = policy_dist.detach().numpy()
+                if model_name != 'minrtt':
+                    value, policy_dist = actor_critic.forward(torch.Tensor(state))
+                    dist = policy_dist.detach().numpy()
+                    #entropy = -np.sum(np.mean(dist) * np.log(dist))
 
-                sample = random.random()
-                eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-                                math.exp(-1. * total_steps / EPS_DECAY)
-                if sample > eps_threshold:
-                    action = np.random.choice(num_outputs, p=np.squeeze(dist))
+                    sample = random.random()
+                    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+                                    math.exp(-1. * total_steps / EPS_DECAY)
+                    if sample > eps_threshold:
+                        action = np.random.choice(num_outputs, p=np.squeeze(dist))
+                    else:
+                        action = env.action_space.sample()
                 else:
-                    action = env.action_space.sample()
+                    action = 0
 
                 new_state, reward, done, reward_info = env.step(action)
                 state = new_state
                 states.append(state)
+                rewards.append(reward)
 
-                replay_memory.update_memory(action, value, policy_dist, reward)
+                if model_name != 'minrtt':
+                    replay_memory.update_memory(action, value, policy_dist, reward)
 
                 if model_name == 'FALCON':
                     change = memory.add_obs(state, actor_critic.state_dict())
@@ -345,18 +335,19 @@ def main():
                     #    else: actor_critic.reset()
                     #    replay_memory.clear()
 
-
-                #TODO make sure replay memory loss is used for previous model after change reset
-                if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
-                    memory_values = replay_memory.get_memory(apply_loss_steps)
-                    ac_loss = calc_a2c_loss(*memory_values)
-                    ac_optimizer.zero_grad()
-                    ac_loss.backward()
-                    ac_optimizer.step()
-                    loss_history.append(ac_loss.detach().numpy())
-                    msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
-                                                                                np.mean(replay_memory.entropy_term))
-                    logger.debug(msg)
+                #ONLINE LOSS
+                if model_name != 'minrtt':
+                    #TODO make sure replay memory loss is used for previous model after change reset
+                    if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
+                        memory_values = replay_memory.get_memory(apply_loss_steps)
+                        ac_loss = actor_critic.calc_a2c_loss(*memory_values)
+                        ac_optimizer.zero_grad()
+                        ac_loss.backward()
+                        ac_optimizer.step()
+                        loss_history.append(ac_loss.detach().numpy())
+                        msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
+                                                                                    np.mean(replay_memory.entropy_term))
+                        logger.debug(msg)
 
                 total_steps += 1
 
@@ -368,42 +359,52 @@ def main():
 
             # compute Q values
             #Qval, _ = actor_critic.forward(torch.tensor(state))
+
+            np.savetxt(log_dir / f"{episode}_rewards.csv", np.array(rewards), delimiter=", ", fmt='% s')
+            np.savetxt(log_dir / f"{episode}_loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
+            np.savetxt(log_dir / f"{episode}_states.csv", np.array(states), delimiter=", ", fmt='% s')
+            segment_rewards = pd.DataFrame(env.segment_rewards)
+            segment_rewards.to_csv(log_dir / f"{episode}_segments.csv")
+
+            #torch.save(actor_critic.state_dict(), log_dir / "")
+
+            segment_rewards.plot(y='qoe')
+            plt.title(f'QOE {run_id} {episode}')
+            plt.savefig(log_dir / "qoe.png")
+            plt.show()
+
             logger.debug("====")
-            logger.debug("Epoch: {}".format(episode))
+            logger.debug(f"Epoch: {episode}, qoe: {segment_rewards['qoe'].values[-1]}")
             #msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
             #                                                            entropy_term)
             #logger.debug(msg)
             logger.debug("====")
-    end_time = time.time()
 
-    loss_history = np.array(loss_history)
-    np.savetxt(log_dir / "rewards.csv",np.array(replay_memory.rewards),delimiter=", ",fmt='% s')
-    np.savetxt(log_dir / "loss.csv", loss_history, delimiter=", ", fmt='% s')
-    np.savetxt(log_dir / "states.csv", np.array(states), delimiter=", ", fmt='% s')
-    segment_rewards = pd.DataFrame(env.segment_rewards)
-    segment_rewards.to_csv(log_dir / "segments.csv")
-    plt.plot(moving_average([x for x in replay_memory.rewards if x > 0], 20))
+
+
+    end_time = time.time()
+    env.close()
+
+    plt.plot(moving_average([x for x in rewards if x > 0], 20))
     plt.title(f'Reward {run_id}')
     plt.savefig(log_dir / "reward.png")
     plt.show()
 
-    segment_rewards.plot(y='qoe')
-    plt.savefig(log_dir / "qoe.png")
-    plt.show()
+    if len(loss_history) > 1:
+        smooth_loss = moving_average(loss_history, 2)
+        plt.plot(smooth_loss)
+        #plt.plot(loss_history)
+        #plt.yscale('log')
+        #plt.yscale('log')
+        plt.ylim(-1, np.max(smooth_loss)+1)
+        plt.title(f'Loss {run_id}')
+        #plt.plot(moving_average(loss_history_critic, 1))
+        #plt.plot(moving_average(loss_history_actor, 1))
+        plt.savefig(log_dir / "loss.png")
+        plt.show()
 
-    plt.plot(moving_average(loss_history, 2))
-    #plt.plot(loss_history)
-    #plt.yscale('log')
-    #plt.yscale('log')
-    plt.ylim(-1, np.max(loss_history)+1)
-    plt.title(f'Loss {run_id}')
-    #plt.plot(moving_average(loss_history_critic, 1))
-    #plt.plot(moving_average(loss_history_actor, 1))
-    plt.savefig(log_dir / "loss.png")
-    plt.show()
-    env.close()
 
-    print("steps/",total_steps/(end_time-start_time))
+    print("steps/second",total_steps/(end_time-start_time))
 
 #def moving_average(a, n=3):
 #    ret = np.cumsum(a, dtype=float)
@@ -417,6 +418,8 @@ def main():
 def plot_most_recent_results():
     pass
 def moving_average(x, w):
+    if len(x) < 3:
+        return x
     if w == 1:
         return x
     m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
