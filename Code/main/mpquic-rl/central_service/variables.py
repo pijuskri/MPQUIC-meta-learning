@@ -12,12 +12,12 @@ A_DIM = 5 # two actions -> path 1 or path 2
 model_name = 'LSTM'
 TRAINING = True #if true, store model after done, have high exploration
 MODE = 'train' if TRAINING else 'test'
-SEGMENT_LIMIT = 60
-EPISODES_TO_RUN = 1
+SEGMENT_LIMIT = 301
+EPISODES_TO_RUN = 10
 
 # hyperparameters
 hidden_size = 256
-learning_rate = 0.005#3e-4
+learning_rate = 0.001 #0.005  #3e-4
 apply_loss_steps = 25
 
 GAMMA = 0.99
@@ -27,4 +27,4 @@ EPS_DECAY = 1000 #higher = slower decay
 
 #change detection
 COOLDOWN_TIME = 60
-CHANGE_PROB = 10.0
+CHANGE_PROB = 50.0

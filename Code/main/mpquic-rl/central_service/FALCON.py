@@ -144,10 +144,11 @@ class SavedModel:
     end: NetworkState
 
 class ChangeDetect:
-    def __init__(self):
+    def __init__(self, logger):
         self.cf = []
         self.change_cooldown = 0
         self.cooldown_time = COOLDOWN_TIME
+        self.logger = logger
         for i in range(S_INFO):
             #self.cf.append(ChangeFinder(r=0.5, order=1, smooth=3))#))
             self.cf.append(ChangeFinder(r=0.4, order=1, smooth=3))  # ))
@@ -161,12 +162,13 @@ class ChangeDetect:
 
         # print(obs)
         self.change_cooldown -= 1
-        print('network switch prob {:.1f} {:.1f}'.format(np.mean(probs), np.cumprod(probs)[-1]))  # , prob
+        #print('network switch prob {:.1f} {:.1f}'.format(np.mean(probs), np.cumprod(probs)[-1]))  # , prob
         prob = np.cumprod(probs)[-1]
         if prob > CHANGE_PROB and self.change_cooldown <= 0:
             change = True
             self.change_cooldown = self.cooldown_time
-            print("Change detected!")
+            #print("Change detected!")
+            self.logger.info("Change detected!")
         return change
 class FalconMemory(ChangeDetect):
     def __init__(self):
@@ -267,6 +269,9 @@ def main():
     log_dir = Path("runs/"+run_id)
     log_dir.mkdir(parents=True)
 
+    logger = config_logger('agent', log_dir / 'agent.log')
+    logger.info("Run Agent until training stops...")
+
     print(f"RUNNING MODEL: {model_name}")
     print(f"RUNNING MODE: {MODE}")
 
@@ -277,18 +282,25 @@ def main():
         memory = FalconMemory()
     elif model_name == 'LSTM':
         actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size, use_lstm=True)
-        memory = ChangeDetect()
+        memory = ChangeDetect(logger)
     else:
         actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
-        memory = ChangeDetect()
+        memory = ChangeDetect(logger)
 
     ac_optimizer = optim.Adam(actor_critic.parameters(), lr=learning_rate)
     print('model', actor_critic)
 
+    #print(actor_critic.state_dict())
     all_lengths = []
     average_lengths = []
     all_rewards = []
 
+    if not TRAINING:
+        #TODO load right model
+        checkpoint = torch.load("runs/20230528_00_09_10_LSTM_train/9_model.tar")
+        actor_critic.load_state_dict(checkpoint['model_state_dict'])
+        ac_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        actor_critic.lstm_memory = checkpoint['lstm_memory']
 
     #
     total_steps = 0
@@ -297,8 +309,7 @@ def main():
 
     replay_memory = ReplayMemory()
 
-    logger = config_logger('agent', log_dir / 'agent.log')
-    logger.info("Run Agent until training stops...")
+
 
     with open(log_dir/"variables.json", "w") as outfile:
         env_vars = {item: getattr(GLOBAL_VARIABLES, item) for item in dir(GLOBAL_VARIABLES) if
@@ -308,9 +319,9 @@ def main():
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(EPISODES_TO_RUN):
+        for episode in tqdm(range(EPISODES_TO_RUN)):
             state = env.reset()
-            entropy_term = 0
+
             start_time = time.time()
             reward_info = None
             rewards = []
@@ -326,8 +337,9 @@ def main():
                     dist = policy_dist.detach().numpy()
 
                     sample = random.random()
-                    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-                                    math.exp(-1. * total_steps / EPS_DECAY)
+                    #eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+                    #                math.exp(-1. * total_steps / EPS_DECAY)
+                    eps_threshold = EPS_START
                     if sample > eps_threshold:
                         action = np.random.choice(num_outputs, p=np.squeeze(dist))
                     else:
@@ -356,6 +368,7 @@ def main():
                     change = memory.add_obs(state)
                     if change:
                         actor_critic.reset_lstm_hidden()
+                        replay_memory.clear()
 
                 #ONLINE LOSS
                 if model_name != 'minrtt':
@@ -364,8 +377,10 @@ def main():
                         memory_values = replay_memory.get_memory(apply_loss_steps)
                         ac_loss = actor_critic.calc_a2c_loss(*memory_values)
                         ac_optimizer.zero_grad()
-                        ac_loss.backward()
+                        retain_graph = True if model_name == 'LSTM' else False
+                        ac_loss.backward() #retain_graph=retain_graph
                         ac_optimizer.step()
+                        if model_name == 'LSTM': actor_critic.lstm_after_loss()
                         loss_history.append(ac_loss.detach().numpy())
                         msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
                                                                                     np.mean(replay_memory.entropy_terms))
@@ -376,11 +391,18 @@ def main():
                 if done:
                     break
 
+            if model_name == 'LSTM': actor_critic.reset_lstm_hidden()
             #if len(log_probs) == 0:
             #    continue
 
             # compute Q values
             #Qval, _ = actor_critic.forward(torch.tensor(state))
+
+            torch.save({
+                'model_state_dict': actor_critic.state_dict(),
+                'optimizer_state_dict': ac_optimizer.state_dict(),
+                'lstm_memory': actor_critic.lstm_memory
+            }, log_dir / f"{episode}_model.tar")
 
             np.savetxt(log_dir / f"{episode}_rewards.csv", np.array(rewards), delimiter=", ", fmt='% s')
             np.savetxt(log_dir / f"{episode}_loss.csv", np.array(loss_history), delimiter=", ", fmt='% s')
@@ -422,12 +444,12 @@ def main():
     plt.show()
 
     if len(loss_history) > 1:
-        smooth_loss = moving_average(loss_history, 2)
+        smooth_loss = moving_average(loss_history, 1)
         plt.plot(smooth_loss)
         #plt.plot(loss_history)
         #plt.yscale('log')
         #plt.yscale('log')
-        plt.ylim(-1, np.max(smooth_loss)+1)
+        plt.ylim(np.min(smooth_loss) -1, np.max(smooth_loss)+1)
         plt.title(f'Loss {run_id}')
         #plt.plot(moving_average(loss_history_critic, 1))
         #plt.plot(moving_average(loss_history_actor, 1))
@@ -454,7 +476,7 @@ def moving_average(x, w):
     if w == 1:
         return x
     m = np.pad(x, int(w/2), mode='mean', stat_length=int(w/2)) #constant_values=np.mean(x)
-    return scipy.ndimage.gaussian_filter1d(m, np.std(x) * w * 2) #(np.std(x) * w * 25)/(len(x)
+    return scipy.ndimage.gaussian_filter1d(m, np.std(x) * w * 2 ) #(np.std(x) * w * 25)/ (np.sqrt(len(x)))
 if __name__ == '__main__':
     main()
 

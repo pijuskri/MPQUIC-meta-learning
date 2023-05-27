@@ -26,15 +26,16 @@ from central_service.variables import GAMMA
 
 #num_steps = 300
 #max_episodes = 3000
-
+layers = 1
 
 class ActorCritic(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, use_lstm=False):
         super(ActorCritic, self).__init__()
 
         self.num_actions = num_actions
+        self.num_inputs = num_inputs
         self.critic_linear1 = nn.Linear(num_inputs, hidden_size)
-        self.critic_linear2 = nn.Linear(hidden_size, 1)
+        self.critic_linear2 = nn.Linear(hidden_size, layers)
 
         self.actor_linear1 = nn.Linear(num_inputs, hidden_size)
         self.actor_linear2 = nn.Linear(hidden_size, num_actions)
@@ -48,20 +49,26 @@ class ActorCritic(nn.Module):
         #state = Variable(torch.from_numpy(state).float().unsqueeze(0))
         state = state.float().unsqueeze(0)
         if self.use_lstm:
-            state, lstm_out = self.l1(state, self.lstm_memory)
-            self.lstm_memory = lstm_out.detach()
-        value = F.relu(self.critic_linear1(state))
+            state_new, lstm_out = self.l1(state, self.lstm_memory)
+            self.lstm_memory = (lstm_out[0], lstm_out[1])
+            #print(lstm_out[0].size())
+        else:
+            state_new = state
+        value = F.relu(self.critic_linear1(state_new))
         value = self.critic_linear2(value)
 
-        policy_dist = F.relu(self.actor_linear1(state))
+        policy_dist = F.relu(self.actor_linear1(state_new))
         policy_dist_1 = F.softmax(self.actor_linear2(policy_dist), dim=1)
 
         return value, policy_dist_1
 
     def reset_lstm_hidden(self):
-        self.lstm_memory = (None, self.lstm_memory[1])
-    def reset(self):
-        self.apply(ActorCritic.init_weights)
+        if self.lstm_memory is not None:
+            self.lstm_memory = (torch.zeros(layers, self.num_inputs), self.lstm_memory[1].detach())
+    def lstm_after_loss(self):
+        self.lstm_memory = (self.lstm_memory[0].detach(), self.lstm_memory[1].detach())
+    #def reset(self):
+    #    self.apply(ActorCritic.init_weights)
 
     def calc_a2c_loss(self, Qval, values, rewards, log_probs, entropy_terms):
 
