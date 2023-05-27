@@ -50,21 +50,17 @@ make sure models use propabilistic action picking and not argmax
 	-do train-test split
 -make storage for runs
 	
-	
-run minrtt on test data
+-run minrtt on test data
+
+perhaps delay reward by 5-6 steps/second = 11 steps. Cause reward arrives every 2 seconds, apply reward to later actions
+implement LSTM model
+make sure continual training works
 
 finish falcon
 	understand how interaction with meta models works
 	define meta model ranges
 	save model
 	train offline models
-	
-
-implement LSTM model
-make sure continual training works
-
-
-
 
 
 

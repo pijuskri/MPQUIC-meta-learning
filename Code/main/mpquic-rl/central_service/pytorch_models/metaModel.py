@@ -15,18 +15,21 @@ import numpy as np
 from torch.autograd import Variable
 import pandas as pd
 
-# hyperparameters
-hidden_size = 256
-learning_rate = 3e-4
+from central_service.variables import GAMMA
 
-# Constants
-GAMMA = 0.99
-num_steps = 300
-max_episodes = 3000
+
+# hyperparameters
+#hidden_size = 256
+#learning_rate = 3e-4
+#
+## Constants
+
+#num_steps = 300
+#max_episodes = 3000
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size):
+    def __init__(self, num_inputs, num_actions, hidden_size, use_lstm=False):
         super(ActorCritic, self).__init__()
 
         self.num_actions = num_actions
@@ -35,11 +38,18 @@ class ActorCritic(nn.Module):
 
         self.actor_linear1 = nn.Linear(num_inputs, hidden_size)
         self.actor_linear2 = nn.Linear(hidden_size, num_actions)
+
+        self.l1 = nn.LSTM(input_size=num_inputs, hidden_size=num_inputs, num_layers=1)
+        self.use_lstm = use_lstm
+        self.lstm_memory: (torch.Tensor, torch.Tensor) = None
         #self.actor
 
     def forward(self, state):
         #state = Variable(torch.from_numpy(state).float().unsqueeze(0))
-        state = Variable(state.float().unsqueeze(0))
+        state = state.float().unsqueeze(0)
+        if self.use_lstm:
+            state, lstm_out = self.l1(state, self.lstm_memory)
+            self.lstm_memory = lstm_out.detach()
         value = F.relu(self.critic_linear1(state))
         value = self.critic_linear2(value)
 
@@ -48,10 +58,12 @@ class ActorCritic(nn.Module):
 
         return value, policy_dist_1
 
+    def reset_lstm_hidden(self):
+        self.lstm_memory = (None, self.lstm_memory[1])
     def reset(self):
         self.apply(ActorCritic.init_weights)
 
-    def calc_a2c_loss(self, Qval, values, rewards, log_probs, entropy_term):
+    def calc_a2c_loss(self, Qval, values, rewards, log_probs, entropy_terms):
 
         # Qval = Qval.detach().numpy()[0, 0]
         values = torch.cat(values)
@@ -67,10 +79,11 @@ class ActorCritic(nn.Module):
         Qvals = torch.FloatTensor(Qvals).detach()
         log_probs = torch.stack(log_probs)
 
+        #entropy_term = torch.sum(entropy_terms)
         advantage = Qvals - values
         actor_loss = (-log_probs * advantage.detach()).mean()
         critic_loss = 0.5 * advantage.pow(2).mean()
-        ac_loss = actor_loss + critic_loss #+ entropy_term # learning_rate *
+        ac_loss = actor_loss + critic_loss #+ entropy_term * 0.001 #
         #loss_history_actor.append(actor_loss.detach().numpy())
         #loss_history_critic.append(critic_loss.detach().numpy())
 

@@ -17,12 +17,14 @@ import pexpect
 from pexpect.popen_spawn import PopenSpawn
 
 from .experiences.quic_web_browse import launchTests
-#from utils.logger import config_logger
+# from utils.logger import config_logger
 
-from central_service.variables import REMOTE_SERVER_RUNNER_HOSTNAME, REMOTE_SERVER_RUNNER_PORT, REMOTE_HOST, REMOTE_PORT
+from central_service.variables import REMOTE_SERVER_RUNNER_HOSTNAME, REMOTE_SERVER_RUNNER_PORT, REMOTE_HOST, \
+    REMOTE_PORT, SEGMENT_LIMIT
 
 MIDDLEWARE_SOURCE_REMOTE_PATH = "~/go/src/github.com/{username}/middleware"
 MIDDLEWARE_BIN_REMOTE_PATH = "~/go/bin/middleware"
+
 
 class Session:
     '''
@@ -30,6 +32,7 @@ class Session:
         for our environment!
         It is utilized by both agent and environment
     '''
+
     def __init__(self, topologies='./environment/topos.json', dgraphs='./environment/train_graphs.json'):
         self._index = 0
 
@@ -49,7 +52,7 @@ class Session:
     def loadTopologies(self, file):
         topos = []
         with open(file, 'r') as fp:
-            #pijus Topos should not be this way
+            # pijus Topos should not be this way
             tmp = """[
                 {
                     "paths": [
@@ -104,14 +107,14 @@ class Session:
                     ]
                 }]"""
             topos = json.load(fp)
-            #topos = json.loads(tmp)
+            # topos = json.loads(tmp)
 
         return topos, len(topos)
 
     def loadDependencyGraphs(self, file):
         graphs = []
         with open(file, 'r') as fp:
-            #pijus
+            # pijus
             tmp = """[{
                 "file": "www.popads.net_",
                 "size": 1
@@ -121,7 +124,7 @@ class Session:
                 "size": 1
             }]"""
             graphs = json.load(fp)
-            #graphs = json.loads(tmp)
+            # graphs = json.loads(tmp)
 
         output = [elem['file'] for elem in graphs]
         return output, len(output)
@@ -131,7 +134,7 @@ class Session:
 
         if self._index >= len(self._pairs):
             return -1
-        return self._index 
+        return self._index
 
     def getCurrentTopo(self):
         topo = self._topologies[self._pairs[self._index][0]]
@@ -158,11 +161,11 @@ class Environment:
         self.bdw_paths = bdw_paths
 
         # Spawn Middleware
-        #self._spawn_cmd = self.construct_cmd(mconfig)
+        # self._spawn_cmd = self.construct_cmd(mconfig)
         self.mconfig = mconfig
         self._remoteHostname = remoteHostname
         self._remotePort = remotePort
-        #self.stop_middleware()
+        # self.stop_middleware()
         self.spawn_middleware()
 
         self.traces = []
@@ -177,7 +180,8 @@ class Environment:
         random.seed(42)
         trace_pairs: list[tuple[str, str]] = []
         root = "../../mpquic-sbd/network/mininet/processed/"
-        self.traces = ["/home/mininet/Workspace/mpquic-sbd/network/mininet/processed/" + f for f in listdir(root) if isfile(join(root, f))]
+        self.traces = ["/home/mininet/Workspace/mpquic-sbd/network/mininet/processed/" + f for f in listdir(root) if
+                       isfile(join(root, f))]
         self.traces.sort()
 
         for trace in self.traces:
@@ -188,20 +192,20 @@ class Environment:
         random.shuffle(trace_pairs)
 
         for trace in trace_pairs:
-            if random.random() > 0.4: #0.4 for equal size #0.2 for 3
+            if random.random() > 0.4:  # 0.4 for equal size #0.2 for 3
                 self.traces_train.append(trace)
             else:
                 self.traces_test.append(trace)
         print(f"train_len: {len(self.traces_train)}")
         print(f"test_len: {len(self.traces_test)}")
-        #print(self.traces_train)
+        # print(self.traces_train)
 
     def spawn_cmd(self):
         return "stdbuf -i0 -o0 -e0 {} -sv {} -cl {} -pub {} -sub {}".format(MIDDLEWARE_BIN_REMOTE_PATH,
-                                                    self.mconfig['server'],
-                                                    self.mconfig['client'],
-                                                    self.mconfig['publisher'],
-                                                    self.mconfig['subscriber'])
+                                                                            self.mconfig['server'],
+                                                                            self.mconfig['client'],
+                                                                            self.mconfig['publisher'],
+                                                                            self.mconfig['subscriber'])
 
     def ssh(self, command):
         return f"ssh -p {self._remotePort} {self._remoteHostname} \"{command}\""
@@ -212,11 +216,11 @@ class Environment:
             Small sleep to ensure previous one is killed.
         '''
         self.stop_middleware()
-        #time.sleep(0.5)
-        #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, self._spawn_cmd]
-        #ssh_cmd = f"ssh -p {self._remotePort} {self._remoteHostname} {self._spawn_cmd}"
+        # time.sleep(0.5)
+        # ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, self._spawn_cmd]
+        # ssh_cmd = f"ssh -p {self._remotePort} {self._remoteHostname} {self._spawn_cmd}"
         cmd = self.spawn_cmd() + "2>&1 | tee ~/Workspace/mpquic-sbd/middleware.txt"
-        #subprocess.Popen(self.ssh(cmd), bufsize=0,
+        # subprocess.Popen(self.ssh(cmd), bufsize=0,
         #                #stdout=subprocess.PIPE,
         #                #stdout=subprocess.DEVNULL,
         #                #stdout=sys.stdout,
@@ -228,14 +232,14 @@ class Environment:
 
     def stop_middleware(self, wait=True):
         kill_cmd = f"stdbuf -oL killall {MIDDLEWARE_BIN_REMOTE_PATH}"
-        #ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, kill_cmd]
+        # ssh_cmd = ["ssh", "-p", self._remotePort, self._remoteHostname, kill_cmd]
         sub = subprocess.Popen(self.ssh(kill_cmd),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        #stdout=subprocess.DEVNULL,
-                        #stderr=subprocess.DEVNULL,
-                        shell=False)
-        #if wait:
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               # stdout=subprocess.DEVNULL,
+                               # stderr=subprocess.DEVNULL,
+                               shell=False)
+        # if wait:
         #    sub.wait()
         sub.communicate()
 
@@ -251,15 +255,15 @@ class Environment:
         ''' One step update. 
             First load current values, then move to next!
         '''
-        #topo = [self.session.getCurrentTopo()]
-        #self.curr_topo = self.getNetemToTuple(topo)
-        #self.curr_graph = self.session.getCurrentGraph()
-#
-        #bdw_path1, bdw_path2 = self.session.getCurrentBandwidth()
-        #self.bdw_paths[0] = bdw_path1
-        #self.bdw_paths[1] = bdw_path2
-#
-        #return self.session.nextRun()
+        # topo = [self.session.getCurrentTopo()]
+        # self.curr_topo = self.getNetemToTuple(topo)
+        # self.curr_graph = self.session.getCurrentGraph()
+        #
+        # bdw_path1, bdw_path2 = self.session.getCurrentBandwidth()
+        # self.bdw_paths[0] = bdw_path1
+        # self.bdw_paths[1] = bdw_path2
+        #
+        # return self.session.nextRun()
         if self.mode == 'train':
             if self._totalRuns < len(self.traces_train):
                 self.current_trace_pair = self.traces_train[self._totalRuns]
@@ -269,32 +273,35 @@ class Environment:
                 self.current_trace_pair = self.traces_test[self._totalRuns]
                 return self._totalRuns
         return -1
+
     def run(self):
         self._totalRuns += 1
-        message = "Run Number: {}, Graph: {}" 
+        message = "Run Number: {}, Graph: {}"
         self._logger.info(message.format(self._totalRuns, self.curr_graph))
-        #time.sleep(10)
+        # time.sleep(10)
         print('sbd called')
         self.sbd_run()
+
     def sbd_run(self):
-        #launchTests(self.curr_topo, self.curr_graph)
-        #cmd = ["ssh", "-p", self._remotePort, self._remoteHostname,
+        # launchTests(self.curr_topo, self.curr_graph)
+        # cmd = ["ssh", "-p", self._remotePort, self._remoteHostname,
         #       "\"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1_old.py -nm 2 -p 'basic' >> ~/Workspace/mpquic-sbd/test_log.txt\""]
         tf = self.current_trace_pair[0]
         tf2 = self.current_trace_pair[1]
-        cmd = self.ssh(f"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'netflix' -tf {tf} -tf2 {tf2} 2>&1 | tee ~/Workspace/mpquic-sbd/test_log.txt") #
+        cmd = self.ssh(
+            f"sudo python ~/Workspace/mpquic-sbd/network/mininet/build_mininet_router1.py -nm 2 -p 'netflix' " +
+            f"-tf {tf} -tf2 {tf2} -s {SEGMENT_LIMIT} 2>&1 | tee ~/Workspace/mpquic-sbd/test_log.txt")  #
         print(cmd)
         f = open("logs/sbd_log.txt", "a")
         child = PopenSpawn(cmd, timeout=900, logfile=f)
         print('launched sbd test')
-        #child.expect("*** Creating network")
-        #time.sleep(10)
+        # child.expect("*** Creating network")
+        # time.sleep(10)
         child.wait()
         print('sbd run over')
-        #the_old_way = subprocess.Popen(cmd,
+        # the_old_way = subprocess.Popen(cmd,
         #                               stdout=subprocess.PIPE).communicate()[0].rstrip()
         f.close()
-
 
     def close(self):
         self.stop_middleware()

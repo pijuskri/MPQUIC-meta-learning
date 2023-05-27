@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import random
 from datetime import datetime
 import math
@@ -23,22 +24,10 @@ from customGym.envs.NetworkEnv import NetworkEnv
 from typing import NamedTuple
 from pathlib import Path
 
-from central_service.variables import A_DIM, S_INFO
+from central_service.variables import *
+import central_service.variables as GLOBAL_VARIABLES
 
-model_name = 'minrtt' #'FALCON'
-TRAINING = False #if true, store model after done, have high exploration
-MODE = 'train' if TRAINING else 'test'
-
-# hyperparameters
-hidden_size = 256
-learning_rate = 0.005#3e-4
-apply_loss_steps = 25
-
-GAMMA = 0.99
-EPS_START = 0.05 #0.9
-EPS_END = 0.05
-EPS_DECAY = 1000 #higher = slower decay
-
+#not_my_data = set(globals())
 
 class _ChangeFinderAbstract(object):
     def _add_one(self, one, ts, size):
@@ -154,15 +143,37 @@ class SavedModel:
     start: NetworkState
     end: NetworkState
 
-class FalconMemory:
+class ChangeDetect:
     def __init__(self):
-        self.lookback = 3
-        self.observations = []
         self.cf = []
-        self.models: list[SavedModel] = []
+        self.change_cooldown = 0
+        self.cooldown_time = COOLDOWN_TIME
         for i in range(S_INFO):
             #self.cf.append(ChangeFinder(r=0.5, order=1, smooth=3))#))
             self.cf.append(ChangeFinder(r=0.4, order=1, smooth=3))  # ))
+
+    def add_obs(self, obs) -> bool:
+        change = False
+        probs = np.zeros(S_INFO)
+        for i, value in enumerate(obs):
+            probs[i], _ = self.cf[i].update(value)
+        # prob = np.cumprod(probs)
+
+        # print(obs)
+        self.change_cooldown -= 1
+        print('network switch prob {:.1f} {:.1f}'.format(np.mean(probs), np.cumprod(probs)[-1]))  # , prob
+        prob = np.cumprod(probs)[-1]
+        if prob > CHANGE_PROB and self.change_cooldown <= 0:
+            change = True
+            self.change_cooldown = self.cooldown_time
+            print("Change detected!")
+        return change
+class FalconMemory(ChangeDetect):
+    def __init__(self):
+        super().__init__()
+        self.lookback = 3
+        self.observations = []
+        self.models: list[SavedModel] = []
     def findModel(self, cur_state):
         for model in self.models:
             #print(model)
@@ -179,18 +190,11 @@ class FalconMemory:
     def add_model(self, start, end, model_state):
         self.models.append(SavedModel(model_state, NetworkState(*start), NetworkState(*end)))
     def add_obs(self, obs, model_state):
-        change = False
-        probs = np.zeros(S_INFO)
-        for i, value in enumerate(obs):
-            probs[i], _ = self.cf[i].update(value)
-        #prob = np.cumprod(probs)
 
-        #print(obs)
-        print('network switch prob {:.1f} {:.1f}'.format(np.mean(probs), np.cumprod(probs)[-1])) #, prob
-        prob = np.cumprod(probs)[-1]
+        change = super().add_obs(obs)
         #print()
         #TODO after change have cooldown to avoid constant switching
-        if prob > 99999.5: #0.5
+        if change: #0.5
             start = self.observations[0]
             end = self.observations[-3]
             change = True
@@ -214,7 +218,7 @@ class ReplayMemory:
         self.values = []
         self.rewards = []
         self.actions = []
-        self.entropy_term = []
+        self.entropy_terms = []
         #self.logger = logger
     def update_memory(self, action, value, policy_dist, reward):
         dist = policy_dist.detach().numpy()
@@ -226,12 +230,12 @@ class ReplayMemory:
         self.rewards.append(reward)
         self.values.append(value)
         self.log_probs.append(log_prob)
-        self.entropy_term.append(entropy)
+        self.entropy_terms.append(entropy)
         #self.entropy_term += entropy
     def get_memory(self, length=-1):
         if length < 0:
             length = len(self.log_probs)
-        entropy_term = np.sum(self.entropy_term[-length:])
+        entropy_term = np.sum(self.entropy_terms[-length:])
         #Qval, values, rewards, log_probs, entropy_term
         return self.values[-1], self.values[-length:], self.rewards[-length:], self.log_probs[-length:], entropy_term
 
@@ -240,7 +244,7 @@ class ReplayMemory:
         self.values = []
         self.rewards = []
         self.actions = []
-        self.entropy_term = []
+        self.entropy_terms = []
 
     def __len__(self):
         return len(self.values)
@@ -268,7 +272,16 @@ def main():
 
     #actor_critic = ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size)
     #print('other model', ActorCriticMLP(num_inputs, num_outputs, hidden_size, hidden_size))
-    actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
+    if model_name == 'FALCON':
+        actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
+        memory = FalconMemory()
+    elif model_name == 'LSTM':
+        actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size, use_lstm=True)
+        memory = ChangeDetect()
+    else:
+        actor_critic = ActorCritic(num_inputs, num_outputs, hidden_size)
+        memory = ChangeDetect()
+
     ac_optimizer = optim.Adam(actor_critic.parameters(), lr=learning_rate)
     print('model', actor_critic)
 
@@ -281,16 +294,21 @@ def main():
     total_steps = 0
 
     env: NetworkEnv = gym.make('NetworkEnv', mode=MODE)
-    memory = FalconMemory()
+
     replay_memory = ReplayMemory()
 
-    logger = config_logger('agent', './logs/agent.log')
+    logger = config_logger('agent', log_dir / 'agent.log')
     logger.info("Run Agent until training stops...")
+
+    with open(log_dir/"variables.json", "w") as outfile:
+        env_vars = {item: getattr(GLOBAL_VARIABLES, item) for item in dir(GLOBAL_VARIABLES) if
+                    not item.startswith("__") and not item.endswith("__")}
+        json.dump(env_vars, outfile, indent=4, sort_keys=False)
 
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(10):
+        for episode in range(EPISODES_TO_RUN):
             state = env.reset()
             entropy_term = 0
             start_time = time.time()
@@ -301,12 +319,11 @@ def main():
             #stop_env.set()
             print("Episode ", episode)
             #TODO handle max steps
-            for step in tqdm(range(max_steps)):
+            for step in range(max_steps): #tqdm(
 
                 if model_name != 'minrtt':
                     value, policy_dist = actor_critic.forward(torch.Tensor(state))
                     dist = policy_dist.detach().numpy()
-                    #entropy = -np.sum(np.mean(dist) * np.log(dist))
 
                     sample = random.random()
                     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
@@ -335,6 +352,11 @@ def main():
                     #    else: actor_critic.reset()
                     #    replay_memory.clear()
 
+                if model_name == 'LSTM':
+                    change = memory.add_obs(state)
+                    if change:
+                        actor_critic.reset_lstm_hidden()
+
                 #ONLINE LOSS
                 if model_name != 'minrtt':
                     #TODO make sure replay memory loss is used for previous model after change reset
@@ -346,7 +368,7 @@ def main():
                         ac_optimizer.step()
                         loss_history.append(ac_loss.detach().numpy())
                         msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
-                                                                                    np.mean(replay_memory.entropy_term))
+                                                                                    np.mean(replay_memory.entropy_terms))
                         logger.debug(msg)
 
                 total_steps += 1
@@ -435,6 +457,7 @@ def moving_average(x, w):
     return scipy.ndimage.gaussian_filter1d(m, np.std(x) * w * 2) #(np.std(x) * w * 25)/(len(x)
 if __name__ == '__main__':
     main()
+
     #data = np.genfromtxt('logs/rewards.csv', delimiter=',')
     #print(len(data))
     #plt.plot(moving_average(data, 20))

@@ -30,10 +30,10 @@ from central_service.utils.data_transf import arrangeStateStreamsInfo, getTraini
 from central_service.variables import REMOTE_HOST, A_DIM
 
 # ---------- Global Variables ----------
-PATHS = [1, 3] # correspond to path ids
-DEFAULT_PATH = 1  # default path without agent
+#PATHS = [1, 3] # correspond to path ids
+#DEFAULT_PATH = 1  # default path without agent
 RANDOM_SEED = 42
-RAND_RANGE = 1000000
+#RAND_RANGE = 1000000
 
 SUMMARY_DIR = '../../central_service/logs/'
 LOG_FILE = '../../central_service/logs/tf_log.log'

@@ -136,7 +136,7 @@ def old_agent():
 
 
     # Main training loop
-    logger = config_logger('agent', './logs/agent.log')
+    logger = config_logger('agent', 'runs/20230527_00_51_39_minrtt_test/agent.log')
     logger.info("Run Agent until training stops...")
 
     with tf.compat.v1.Session() as sess, open(LOG_FILE, 'w') as log_file:
@@ -707,7 +707,7 @@ def torch_agent():
     entropy_term = 0
     epoch = 0
 
-    logger = config_logger('agent', './logs/agent.log')
+    logger = config_logger('agent', 'runs/20230527_00_51_39_minrtt_test/agent.log')
     logger.info("Run Agent until training stops...")
 
     print("Starting agent")

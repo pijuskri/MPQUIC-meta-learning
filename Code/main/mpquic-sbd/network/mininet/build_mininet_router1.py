@@ -353,13 +353,14 @@ def run():
         #"tc qdisc change dev eth1 root netem delay 80ms 10ms"
 
     trace_runner = RepeatedTimer(1, set_lte_trace, traces)
+    print("segment limit: {0}".format(segment_limit))
 
     for i in range(n_times):
         if download:
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 301 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n {3} -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out, segment_limit)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
@@ -434,6 +435,12 @@ if __name__ == '__main__':
                         default='wifi',
                         help="Path to trace to use for the experiment")
 
+    parser.add_argument('--segment', '-s',
+                        metavar='segment',
+                        type=int,
+                        default=301,
+                        help="Segment limit for dash")
+
 
     # Execute the parse_args() method
     args                       = parser.parse_args()
@@ -444,6 +451,7 @@ if __name__ == '__main__':
     n_times = args.times
     trace_file = args.trace
     trace_file2 = args.trace2
+    segment_limit = args.segment
 
     # if len(sys.argv) > 1:
     #     with_background = int(sys.argv[1])

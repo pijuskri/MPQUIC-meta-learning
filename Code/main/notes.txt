@@ -159,4 +159,10 @@ reward delay (and sparsity) is a big limitation when dealing with qoe
 making reward not sparse anymore, report previous known bitrate.
 
 using buffer size of 10, so 20 seconds
+seems video needs keyint for corrent lengths in segments, otherwise inconsitent based on fps
 
+min rtt finally done
+
+#05/27
+https://shmuma.medium.com/summary-noisy-networks-for-exploration-c8ba6e2759c7
+I will use only epsilon for now, as it achieves the same thing as entropy
