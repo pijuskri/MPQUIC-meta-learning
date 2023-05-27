@@ -157,3 +157,6 @@ to install numpy, get wheel, rename to cv_py-0.1.0-cp38-cp38-linux_x86_64.whl (i
 #05/26
 reward delay (and sparsity) is a big limitation when dealing with qoe
 making reward not sparse anymore, report previous known bitrate.
+
+using buffer size of 10, so 20 seconds
+

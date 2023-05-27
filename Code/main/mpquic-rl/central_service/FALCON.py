@@ -26,7 +26,7 @@ from pathlib import Path
 from central_service.variables import A_DIM, S_INFO
 
 model_name = 'minrtt' #'FALCON'
-TRAINING = True #if true, store model after done, have high exploration
+TRAINING = False #if true, store model after done, have high exploration
 MODE = 'train' if TRAINING else 'test'
 
 # hyperparameters
@@ -257,7 +257,7 @@ def main():
     torch.manual_seed(42)
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 5000
+    max_steps = 7000
 
     run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}_{MODE}"
     log_dir = Path("runs/"+run_id)
@@ -290,7 +290,7 @@ def main():
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(3):
+        for episode in range(10):
             state = env.reset()
             entropy_term = 0
             start_time = time.time()
@@ -367,14 +367,22 @@ def main():
             segment_rewards.to_csv(log_dir / f"{episode}_segments.csv")
 
             #torch.save(actor_critic.state_dict(), log_dir / "")
-
-            segment_rewards.plot(y='qoe')
+            segment_rewards['qoe_smooth'] = segment_rewards['qoe'].rolling(10).mean()
+            segment_rewards[['qoe', 'qoe_smooth']].plot()
             plt.title(f'QOE {run_id} {episode}')
             plt.savefig(log_dir / "qoe.png")
             plt.show()
 
+            segment_rewards['bitrate'].rolling(10).mean().plot()
+            plt.title(f'bitrate {run_id} {episode}')
+            plt.savefig(log_dir / "bitrate.png")
+            plt.show()
+
             logger.debug("====")
-            logger.debug(f"Epoch: {episode}, qoe: {segment_rewards['qoe'].values[-1]}")
+            #segment_rewards['qoe'].values[-1]
+            avg_qoe = segment_rewards[segment_rewards['segment_nr']==segment_rewards['segment_nr'].max()]['qoe'].mean()
+            logger.debug(f"Epoch: {episode}, qoe: {avg_qoe}")
+            print(f"Epoch: {episode}, qoe: {avg_qoe}")
             #msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(replay_memory.rewards),
             #                                                            entropy_term)
             #logger.debug(msg)
@@ -385,6 +393,7 @@ def main():
     end_time = time.time()
     env.close()
 
+    plt.plot(rewards)
     plt.plot(moving_average([x for x in rewards if x > 0], 20))
     plt.title(f'Reward {run_id}')
     plt.savefig(log_dir / "reward.png")

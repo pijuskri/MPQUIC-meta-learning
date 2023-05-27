@@ -28,7 +28,7 @@ PATH_DIR = "/Workspace/mpquic-sbd/"
 USER='mininet'
 
 
-wifi_bandwith = 15#15#1.5
+wifi_bandwith = 30#15#1.5
 wifi_latency = 30 #10
 wifi_loss = 0.7
 lte_bandwith = 3
@@ -359,12 +359,12 @@ def run():
             cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -p '{1}' -d -q -mp &>> {2} &".format(file_mpd, playback, file_out)
         else:
             #-n : limit segment count
-            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 30 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
+            cmd = "nice -n -10 python3 src/AStream/dist/client/dash_client.py -m https://10.0.2.2:4242/{0} -n 301 -p '{1}' -q -mp &>> {2}".format(file_mpd, playback, file_out)
             #file_mpd = '4k60fps.webm'
             #cmd = "nice -n -10 python3 src/AStream/dist/client/bulk_transfer.py -m https://10.0.2.2:4242/{0} -p '{1}' -q -mp >> {2} &".format(file_mpd, playback, file_out)
 
         print(cmd)
-        clients_parallel = 5
+        clients_parallel = 1
         #net['client'].cmd(cmd)
         parallel_cmd = ""
         for i in range(clients_parallel):

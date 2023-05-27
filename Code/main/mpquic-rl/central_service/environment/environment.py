@@ -171,6 +171,7 @@ class Environment:
         self.current_trace_pair = []
         self.mode = mode
         self.get_traces()
+        print(f"mode received at env: {mode}")
 
     def get_traces(self):
         random.seed(42)
@@ -187,7 +188,7 @@ class Environment:
         random.shuffle(trace_pairs)
 
         for trace in trace_pairs:
-            if random.random() > 0.2: #0.4 for equal size
+            if random.random() > 0.4: #0.4 for equal size #0.2 for 3
                 self.traces_train.append(trace)
             else:
                 self.traces_test.append(trace)
