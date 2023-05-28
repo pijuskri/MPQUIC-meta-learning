@@ -163,17 +163,19 @@ class NetworkEnv(gym.Env):
         #normalized_loss_path1 = ((path2_retransmissions + path2_losses) - 0.0) / 20.0
 
         bdw_max = 25.0 * 1024 #convert from kb to mb
-        rtt_max = 300.0
-        max_loss = 100.0
+        rtt_max = 500.0 #in ms, input is in seconds
+        max_loss = 10.0
 
         #ensure not zero
         path1_packets = max(1, path1_packets)
         path2_packets = max(1, path2_packets)
+        path1_smoothed_RTT = max(0.01, path1_smoothed_RTT)
+        path2_smoothed_RTT = max(0.01, path2_smoothed_RTT)
 
         normalized_bwd_path0 = path1_bandwidth / bdw_max
         normalized_bwd_path1 = path2_bandwidth / bdw_max
-        normalized_srtt_path0 = ((path1_smoothed_RTT * 1000.0) - 1.0) / (rtt_max)
-        normalized_srtt_path1 = ((path2_smoothed_RTT * 1000.0) - 1.0) / (rtt_max)
+        normalized_srtt_path0 = (path1_smoothed_RTT * 1000.0) / (rtt_max)
+        normalized_srtt_path1 = (path2_smoothed_RTT * 1000.0) / (rtt_max)
         normalized_loss_path0 = ((path1_retransmissions + path1_losses) / path1_packets) * max_loss
         normalized_loss_path1 = ((path2_retransmissions + path2_losses) / path2_packets) * max_loss
         return NetworkState(normalized_bwd_path0,normalized_bwd_path1,normalized_srtt_path0,normalized_srtt_path1,

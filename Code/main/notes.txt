@@ -173,3 +173,16 @@ https://stackoverflow.com/questions/48274929/pytorch-runtimeerror-trying-to-back
 this also says you can use it in further computation
 
 running lstm with 0.001 loss, by the looks might be a decent idea to use 0.002
+
+#05/28
+lstm performs worse then minrtt or equal on some metrics
+causes possible: use of on-policy algorithm, reward delay, latency between model and actions.
+Makes it hard to adapt other models: n-step loss instead of episodic,
+basically not a simulation, but a real world run that is online. Can not rerun train data
+Online+offline models perform best.
+ 
+turns out my action space was wrong, so the model could not choose to not use path 2
+
+A Survey of Meta-Reinforcement Learning:
+This problem is a single task, few shot meta RL proble. There are very few models that deal in this domain and its a difficult field due to inner loop task boundaries.
+
