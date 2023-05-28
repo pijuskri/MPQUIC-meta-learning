@@ -64,7 +64,7 @@ func (sch *scheduler) setup(s *session) {
 	sch.lastScheduled = time.Now()
 	sch.rlAction = make(chan int, 50)
 	sch.rlFailedChan = make(chan int, 50)
-	sch.maxAction = 5
+	sch.maxAction = 7
 	sch.s1 = rand.NewSource(time.Now().UnixNano())
 	sch.r1 = rand.New(sch.s1)
 	go func() {

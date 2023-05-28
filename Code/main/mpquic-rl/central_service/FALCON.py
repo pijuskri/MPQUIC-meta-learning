@@ -329,7 +329,7 @@ def main():
             #stop_env.set()
             print("Episode ", episode)
             #TODO handle max steps
-            for step in range(max_steps): #tqdm(
+            for step in tqdm(range(max_steps)): #tqdm(
 
                 if model_name != 'minrtt':
                     value, policy_dist = actor_critic.forward(torch.Tensor(state))
@@ -338,7 +338,7 @@ def main():
                     sample = random.random()
                     #eps_threshold = EPS_END + (EPS_START - EPS_END) * \
                     #                math.exp(-1. * total_steps / EPS_DECAY)
-                    eps_threshold = EPS_START
+                    eps_threshold = EPS_TRAIN if TRAINING else EPS_TEST
                     if sample > eps_threshold:
                         action = np.random.choice(num_outputs, p=np.squeeze(dist))
                     else:
