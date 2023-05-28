@@ -171,3 +171,5 @@ https://stackoverflow.com/questions/66187443/lstm-detach-the-hidden-state
 this says to detach memory, but "Reinforcement Learning with Long-Short term Memory" does use cec(long term memory cells) for propagation
 https://stackoverflow.com/questions/48274929/pytorch-runtimeerror-trying-to-backward-through-the-graph-a-second-time-but
 this also says you can use it in further computation
+
+running lstm with 0.001 loss, by the looks might be a decent idea to use 0.002

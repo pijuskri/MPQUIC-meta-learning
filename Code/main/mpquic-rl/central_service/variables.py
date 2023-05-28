@@ -10,7 +10,7 @@ A_DIM = 5 # two actions -> path 1 or path 2
 
 #model_name = 'minrtt' #'FALCON'
 model_name = 'LSTM'
-TRAINING = True #if true, store model after done, have high exploration
+TRAINING = False #if true, store model after done, have high exploration
 MODE = 'train' if TRAINING else 'test'
 SEGMENT_LIMIT = 301
 EPISODES_TO_RUN = 10
@@ -28,3 +28,5 @@ EPS_DECAY = 1000 #higher = slower decay
 #change detection
 COOLDOWN_TIME = 60
 CHANGE_PROB = 50.0
+
+LSTM_TRAINED_MODEL = "runs/20230528_00_30_35_LSTM_train/9_model.tar"

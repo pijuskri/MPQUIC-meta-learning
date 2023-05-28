@@ -296,17 +296,16 @@ def main():
     all_rewards = []
 
     if not TRAINING:
-        #TODO load right model
-        checkpoint = torch.load("runs/20230528_00_09_10_LSTM_train/9_model.tar")
+        if model_name == 'LSTM':
+            checkpoint = torch.load(LSTM_TRAINED_MODEL)
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
         ac_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         actor_critic.lstm_memory = checkpoint['lstm_memory']
+        print("model loaded from checkpoint")
 
     #
     total_steps = 0
-
     env: NetworkEnv = gym.make('NetworkEnv', mode=MODE)
-
     replay_memory = ReplayMemory()
 
 
