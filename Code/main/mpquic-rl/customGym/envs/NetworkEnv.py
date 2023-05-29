@@ -27,7 +27,7 @@ from central_service.environment.environment import Environment
 from central_service.utils.logger import config_logger
 from central_service.utils.queue_ops import get_request, put_response
 from central_service.utils.data_transf import arrangeStateStreamsInfo, getTrainingVariables, allUnique
-from central_service.variables import REMOTE_HOST, A_DIM
+from central_service.variables import REMOTE_HOST, A_DIM, INTERMEDIATE_REWARD, SPARSE_REWARD
 
 # ---------- Global Variables ----------
 #PATHS = [1, 3] # correspond to path ids
@@ -263,16 +263,20 @@ class NetworkEnv(gym.Env):
         #    if not self.cqueue.empty():
         #        res = list(self.cqueue.queue)[-1]
         #a = action -1
-        prob1 = 1 - ((action - 1) / (A_DIM - 1))
-        obs = self.get_net_state()
-        if (obs.normalized_bwd_path0 + obs.normalized_bwd_path1) > 0:
-            reward = (obs.normalized_bwd_path0 * prob1 + obs.normalized_bwd_path1 * (1-prob1)) / (obs.normalized_bwd_path0 + obs.normalized_bwd_path1)
-        else:
-            reward = 0
-        reward *= 0.5
+        reward = 0
+        if INTERMEDIATE_REWARD:
+            prob1 = 1 - ((action - 1) / (A_DIM - 1))
+            obs = self.get_net_state()
+            if (obs.normalized_bwd_path0 + obs.normalized_bwd_path1) > 0:
+                reward = (obs.normalized_bwd_path0 * prob1 + obs.normalized_bwd_path1 * (1-prob1)) / (obs.normalized_bwd_path0 + obs.normalized_bwd_path1)
+            else:
+                reward = 0
+            reward *= 0.5
+
+
         if res is None:
-            #if self.previous_reward is not None:
-            #    return self.previous_reward, False
+            if not SPARSE_REWARD and self.previous_reward is not None:
+                return self.previous_reward, False
 
             return reward, False
         self.segment_rewards.append(res)
@@ -283,7 +287,8 @@ class NetworkEnv(gym.Env):
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
         buffer_i = buffering_ratio / (1 - buffering_ratio)
-        reward += bandwidth * 5
+        if INTERMEDIATE_REWARD: reward += bandwidth * 5
+        else: reward = bandwidth
         #reward = bitrate*0.5 - down_shifts - buffer_i * 5 - initial_buffering
         self.previous_reward = reward
         return reward, True

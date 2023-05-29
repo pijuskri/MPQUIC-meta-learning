@@ -381,13 +381,16 @@ def main():
                 #ONLINE LOSS
                 if model_name != 'minrtt':
                     #TODO make sure replay memory loss is used for previous model after change reset
-                    #if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
-                    diff = step - last_segment_update
-                    if segment_update_count >= SEGMENT_UPDATES_FOR_LOSS and diff > 0:
+                    if LOSS_SEGMENT_RETURN_BASED:
+                        diff = step - last_segment_update
+                    else: diff = apply_loss_steps
+
+                    if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
+                    #if segment_update_count >= SEGMENT_UPDATES_FOR_LOSS and diff > 0:
                         memory_values = replay_memory.get_memory(diff)
                         ac_loss = actor_critic.calc_a2c_loss(*memory_values)
                         ac_optimizer.zero_grad()
-                        retain_graph = True if model_name == 'LSTM' else False
+                        #retain_graph = True if model_name == 'LSTM' else False
                         ac_loss.backward() #retain_graph=retain_graph
                         ac_optimizer.step()
                         if model_name == 'LSTM': actor_critic.lstm_after_loss()

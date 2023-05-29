@@ -4,13 +4,13 @@ REMOTE_SERVER_RUNNER_HOSTNAME = ["mininet@localhost"]
 REMOTE_SERVER_RUNNER_PORT = ["2222"]
 
 S_INFO = 6  # bandwidth_path_i, path_i_mean_RTT, path_i_retransmitted_packets + path_i_lost_packets
-A_DIM = 8 # 0 = minrtt, 1 = 0% path 1, 3 = 50%, 5 = 100% path 1
+A_DIM = 6 # 0 = minrtt, 1 = 0% path 1, 3 = 50%, 5 = 100% path 1
 
 
 
 #model_name = 'minrtt' #'FALCON'
-model_name = 'LSTM'
-#model_name = 'a2c'
+#model_name = 'LSTM'
+model_name = 'a2c'
 TRAINING = True #if true, store model after done, have high exploration
 MODE = 'train' if TRAINING else 'test'
 LOAD_MODEL = True
@@ -31,6 +31,9 @@ EPS_TRAIN = 0.15
 #EPS_START = 0.05
 #EPS_END = 0.05
 #EPS_DECAY = 1000 #higher = slower decay
+INTERMEDIATE_REWARD = False
+SPARSE_REWARD = False
+LOSS_SEGMENT_RETURN_BASED = False
 
 #change detection
 COOLDOWN_TIME = 60
