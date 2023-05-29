@@ -5,6 +5,7 @@ REMOTE_SERVER_RUNNER_PORT = ["2222"]
 
 S_INFO = 6  # bandwidth_path_i, path_i_mean_RTT, path_i_retransmitted_packets + path_i_lost_packets
 A_DIM = 6 # 0 = minrtt, 1 = 0% path 1, 3 = 50%, 5 = 100% path 1
+# so A_dim = 6 is a max output action of 5
 
 
 
@@ -40,4 +41,5 @@ COOLDOWN_TIME = 60
 CHANGE_PROB = 50.0
 
 LSTM_TRAINED_MODEL = "runs/20230529_02_32_23_LSTM_train/9_model.tar"
+A2C_TRAINED_MODEL = "runs/20230529_20_04_52_a2c_train/9_model.tar"
 LSTM_HIDDEN = 32

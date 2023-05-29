@@ -3,3 +3,5 @@ lstm: 1.2713934629278612 (another run was 1.24, so this is just noise)
 Also got 1.35 on big run.
 
 minrtt: 1.2464238512100239
+
+when training a2c, in segment 3 (trace static_184) there was a huge buffering event

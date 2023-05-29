@@ -301,7 +301,7 @@ def main():
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
         ac_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         actor_critic.lstm_memory = checkpoint['lstm_memory']
-        print(checkpoint['optimizer_state_dict'])
+        #print(checkpoint['optimizer_state_dict'])
         print("model loaded from checkpoint")
 
     #
