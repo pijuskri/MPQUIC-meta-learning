@@ -295,7 +295,7 @@ def main():
     average_lengths = []
     all_rewards = []
 
-    if not TRAINING and EPISODES_TO_RUN == 10 and model_name != 'minrtt':
+    if not TRAINING and LOAD_MODEL and model_name != 'minrtt':
         if model_name == 'LSTM':
             checkpoint = torch.load(LSTM_TRAINED_MODEL)
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
