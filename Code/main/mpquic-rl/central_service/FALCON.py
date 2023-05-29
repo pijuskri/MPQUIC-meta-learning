@@ -263,7 +263,7 @@ def main():
     torch.manual_seed(42)
     num_inputs = S_INFO
     num_outputs = A_DIM
-    max_steps = 7000
+    max_steps = 4000
 
     run_id = datetime.now().strftime('%Y%m%d_%H_%M_%S')+f"_{model_name}_{MODE}"
     log_dir = Path("runs/"+run_id)
@@ -295,12 +295,13 @@ def main():
     average_lengths = []
     all_rewards = []
 
-    if not TRAINING:
+    if not TRAINING and EPISODES_TO_RUN == 10 and model_name != 'minrtt':
         if model_name == 'LSTM':
             checkpoint = torch.load(LSTM_TRAINED_MODEL)
         actor_critic.load_state_dict(checkpoint['model_state_dict'])
         ac_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         actor_critic.lstm_memory = checkpoint['lstm_memory']
+        print(checkpoint['optimizer_state_dict'])
         print("model loaded from checkpoint")
 
     #
@@ -318,7 +319,7 @@ def main():
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in tqdm(range(EPISODES_TO_RUN)):
+        for episode in range(EPISODES_TO_RUN):
             state = env.reset()
 
             start_time = time.time()
@@ -329,6 +330,8 @@ def main():
             #stop_env.set()
             print("Episode ", episode)
             #TODO handle max steps
+            last_segment_update = 0
+            segment_update_count = 0
             for step in tqdm(range(max_steps)): #tqdm(
 
                 if model_name != 'minrtt':
@@ -351,6 +354,10 @@ def main():
                 states.append(state)
                 rewards.append(reward)
 
+                segment_done = False
+                if reward_info == True:
+                    segment_update_count += 1
+
                 if model_name != 'minrtt':
                     replay_memory.update_memory(action, value, policy_dist, reward)
 
@@ -363,17 +370,21 @@ def main():
                     #    else: actor_critic.reset()
                     #    replay_memory.clear()
 
+                change = False
                 if model_name == 'LSTM':
                     change = memory.add_obs(state)
                     if change:
-                        actor_critic.reset_lstm_hidden()
-                        replay_memory.clear()
+                        #actor_critic.reset_lstm_hidden()
+                        #replay_memory.clear()
+                        segment_update_count = SEGMENT_UPDATES_FOR_LOSS
 
                 #ONLINE LOSS
                 if model_name != 'minrtt':
                     #TODO make sure replay memory loss is used for previous model after change reset
-                    if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
-                        memory_values = replay_memory.get_memory(apply_loss_steps)
+                    #if total_steps % apply_loss_steps == 0 and total_steps > 0 and len(replay_memory) > apply_loss_steps:
+                    diff = step - last_segment_update
+                    if segment_update_count >= SEGMENT_UPDATES_FOR_LOSS and diff > 0:
+                        memory_values = replay_memory.get_memory(diff)
                         ac_loss = actor_critic.calc_a2c_loss(*memory_values)
                         ac_optimizer.zero_grad()
                         retain_graph = True if model_name == 'LSTM' else False
@@ -384,6 +395,12 @@ def main():
                         msg = "TD_loss: {}, Avg_reward: {}, Avg_entropy: {}".format(ac_loss, np.mean(memory_values[2]),
                                                                                     np.mean(replay_memory.entropy_terms))
                         logger.debug(msg)
+                        last_segment_update = step
+                        segment_update_count = 0
+
+                if model_name == 'LSTM' and change:
+                    actor_critic.reset_lstm_hidden()
+                    replay_memory.clear()
 
                 total_steps += 1
 
@@ -436,7 +453,7 @@ def main():
     end_time = time.time()
     env.close()
 
-    plt.plot(rewards)
+    plt.plot([x for x in rewards if x > 0])
     plt.plot(moving_average([x for x in rewards if x > 0], 20))
     plt.title(f'Reward {run_id}')
     plt.savefig(log_dir / "reward.png")

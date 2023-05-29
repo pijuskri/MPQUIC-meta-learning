@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # (2 since we're learning 2 games)
     # EWCConvDeepQN(4, (84, 84), action_space, n_tasks=2, bias=True)
     #model = ActorCriticMLP(num_inputs=6, num_actions=2, actor_hidden_sizes=128, critic_hidden_sizes=128)
-    model = MLPDeepQN(input_size=6, hidden_size=128, n_actions=2)
+    model = MLPDeepQN(input_size=6, hidden_size=128, n_actions=6)
     print('Model', model)
     optimizer = Adam(model.parameters(), lr=1e-4)
 

@@ -262,10 +262,19 @@ class NetworkEnv(gym.Env):
         #with self.cqueue.mutex:
         #    if not self.cqueue.empty():
         #        res = list(self.cqueue.queue)[-1]
+        #a = action -1
+        prob1 = 1 - ((action - 1) / (A_DIM - 1))
+        obs = self.get_net_state()
+        if (obs.normalized_bwd_path0 + obs.normalized_bwd_path1) > 0:
+            reward = (obs.normalized_bwd_path0 * prob1 + obs.normalized_bwd_path1 * (1-prob1)) / (obs.normalized_bwd_path0 + obs.normalized_bwd_path1)
+        else:
+            reward = 0
+        reward *= 0.5
         if res is None:
-            if self.previous_reward is not None:
-                return self.previous_reward
-            return 0
+            #if self.previous_reward is not None:
+            #    return self.previous_reward, False
+
+            return reward, False
         self.segment_rewards.append(res)
 
         bandwidth = res["bandwidth"] / 1048576
@@ -274,10 +283,10 @@ class NetworkEnv(gym.Env):
         buffering_ratio = res["buffering_ratio"]
         initial_buffering = res["initial_buffering"]
         buffer_i = buffering_ratio / (1 - buffering_ratio)
-        reward = bandwidth
+        reward += bandwidth * 5
         #reward = bitrate*0.5 - down_shifts - buffer_i * 5 - initial_buffering
         self.previous_reward = reward
-        return reward
+        return reward, True
 
 # %%
 # Oftentimes, info will also contain some data that is only available
@@ -357,14 +366,14 @@ class NetworkEnv(gym.Env):
         #print("response sent")
 
         #terminated =
-        reward = self.reward(action, False)
+        reward, info = self.reward(action, False)
         observation = self._get_obs()
-        info = self._get_info()
+        #info = self._get_info()
 
         request, ev1 = get_request(self.tqueue, self.logger, end_of_run=self.end_of_run)
 
         if request is None and self.end_of_run.is_set():
-            reward = self.reward(action, True)
+            #reward, info = self.reward(action, True)
             print('done sent')
             self.request = None
             if gym_compat:
