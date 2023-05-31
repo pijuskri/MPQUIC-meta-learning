@@ -13,6 +13,7 @@ from os.path import isfile, join
 from itertools import combinations
 import itertools
 
+import pandas as pd
 import pexpect
 from pexpect.popen_spawn import PopenSpawn
 
@@ -20,7 +21,7 @@ from .experiences.quic_web_browse import launchTests
 # from utils.logger import config_logger
 
 from central_service.variables import REMOTE_SERVER_RUNNER_HOSTNAME, REMOTE_SERVER_RUNNER_PORT, REMOTE_HOST, \
-    REMOTE_PORT, SEGMENT_LIMIT
+    REMOTE_PORT, SEGMENT_LIMIT, START_WITH_TRACE
 
 MIDDLEWARE_SOURCE_REMOTE_PATH = "~/go/src/github.com/{username}/middleware"
 MIDDLEWARE_BIN_REMOTE_PATH = "~/go/bin/middleware"
@@ -151,7 +152,7 @@ class Session:
 
 class Environment:
     def __init__(self, bdw_paths, logger, mconfig, remoteHostname=REMOTE_HOST, remotePort=REMOTE_PORT, mode='test'):
-        self._totalRuns = 0
+        self._totalRuns = START_WITH_TRACE
         self._logger = logger
 
         # Session object
@@ -198,6 +199,7 @@ class Environment:
                 self.traces_test.append(trace)
         print(f"train_len: {len(self.traces_train)}")
         print(f"test_len: {len(self.traces_test)}")
+        pd.DataFrame(self.traces_test, columns=['Trace1', 'Trace2']).to_csv("test_traces.csv")
         # print(self.traces_train)
 
     def spawn_cmd(self):
