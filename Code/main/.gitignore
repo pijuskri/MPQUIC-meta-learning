@@ -125,7 +125,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# id_rsa.pub
+id_rsa.pub
 #For vm images
 backups.rar
 *.vmdk

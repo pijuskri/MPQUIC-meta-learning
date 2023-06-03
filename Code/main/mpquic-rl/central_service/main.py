@@ -321,7 +321,7 @@ def main():
     start_time = time.time()
     print("Starting agent")
     with torch.autograd.set_detect_anomaly(True):
-        for episode in range(EPISODES_TO_RUN):
+        for episode in range(START_WITH_TRACE, START_WITH_TRACE + EPISODES_TO_RUN):
             state = env.reset()
 
             start_time = time.time()
