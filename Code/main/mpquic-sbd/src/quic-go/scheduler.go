@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -350,7 +351,10 @@ pathLoop:
 	// 	utils.Infof("Statistics: PathID: %d, Bandwidth %f SmoothedRtt: %d", stats.PathID, stats.Bandwidth, stats.SmoothedRTT)
 	// }
 
-	// Marios: Send & Receive Test -----------------------------------------------------------
+	sort.Slice(pathStats[:], func(i, j int) bool {
+		return pathStats[i].PathID < pathStats[j].PathID
+	})
+
 	start := time.Now()
 
 	request := &Request{
@@ -459,6 +463,9 @@ pathLoop:
 
 		}
 	*/
+	sort.Slice(avalPaths[:], func(i, j int) bool {
+		return avalPaths[i].pathID < avalPaths[j].pathID
+	})
 
 	randv := sch.r1.Float32()
 	if prob1 > randv {
